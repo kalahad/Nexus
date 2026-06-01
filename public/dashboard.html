@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NEXUS — Live Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--cyan:#00e5ff;--violet:#7c3aed;--amber:#f59e0b;
+  --green:#10b981;--red:#ef4444;--blue:#3b82f6;--pink:#ec4899;
+  --text:#f1f5f9;--muted:#64748b;--sub:#94a3b8;
+  --glass:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);
+}
+html,body{height:100%}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+
+/* ── Orbs ── */
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(100px);opacity:.14;animation:drift 14s ease-in-out infinite alternate;z-index:0}
+.orb1{width:600px;height:600px;background:var(--violet);top:-200px;left:-200px}
+.orb2{width:500px;height:500px;background:var(--cyan);bottom:-150px;right:-150px;animation-delay:-6s}
+.orb3{width:350px;height:350px;background:var(--amber);top:50%;left:50%;animation-delay:-10s}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(50px,40px) scale(1.15)}}
+
+/* ── Layout ── */
+.page{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:rgba(7,9,15,.75);
+  border-bottom:1px solid var(--border);padding:1rem 2rem;
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;
+  background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr-right{display:flex;align-items:center;gap:1.25rem}
+.conn-badge{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--muted)}
+.blink{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink2 2s infinite}
+@keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
+#clock{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;padding:1.25rem 2rem;flex-shrink:0}
+.stat{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:1rem 1.1rem}
+.stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem}
+.stat-val{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
+.grad-cyan  {background:linear-gradient(135deg,var(--cyan),#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.grad-violet{background:linear-gradient(135deg,var(--violet),#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.grad-amber {background:linear-gradient(135deg,var(--amber),#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.grad-green {background:linear-gradient(135deg,var(--green),#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ── Engagement Score ── */
+.eng-ring{position:relative;display:flex;align-items:center;justify-content:center}
+.eng-ring canvas{transform:rotate(-90deg)}
+.eng-center{position:absolute;text-align:center}
+.eng-num{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--cyan)}
+.eng-sub{font-size:.6rem;color:var(--muted)}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;padding:0 2rem;border-bottom:1px solid var(--border);flex-shrink:0;backdrop-filter:blur(12px);background:rgba(7,9,15,.4)}
+.tab-btn{padding:.7rem 1.4rem;font-family:'Noto Sans Thai',sans-serif;font-size:.88rem;font-weight:600;
+  color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--cyan)}
+
+/* ── Tab panes ── */
+.tab-pane{display:none;padding:1.5rem 2rem;overflow-y:auto}
+.tab-pane.active{display:block}
+
+/* ── Glass card ── */
+.card{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:var(--glass);
+  border:1px solid var(--border);border-radius:18px;padding:1.25rem}
+.card-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+.span2{grid-column:1/-1}
+
+/* ── Poll bars ── */
+.poll-blk{margin-bottom:1.4rem}
+.poll-blk:last-child{margin-bottom:0}
+.poll-q{font-weight:600;margin-bottom:.7rem;font-size:.92rem;line-height:1.4}
+.type-badge{display:inline-block;padding:.14rem .45rem;border-radius:5px;font-size:.66rem;font-weight:700;margin-left:.35rem;vertical-align:middle}
+.tc{background:rgba(124,58,237,.2);color:#a78bfa}
+.tt{background:rgba(0,229,255,.15);color:var(--cyan)}
+.tr{background:rgba(245,158,11,.2);color:var(--amber)}
+.bar-row{display:flex;gap:.6rem;align-items:center;margin-bottom:.4rem}
+.bar-lbl{width:120px;font-size:.8rem;color:var(--sub);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-w{flex:1;background:rgba(255,255,255,.07);border-radius:4px;height:8px;overflow:hidden}
+.bar-f{height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:4px;transition:width .6s}
+.bar-pct{width:34px;text-align:right;font-size:.75rem;color:var(--muted)}
+
+/* ── Rating bar ── */
+.rbar-f{height:100%;background:linear-gradient(90deg,var(--amber),#fbbf24);border-radius:4px;transition:width .6s}
+.r-avg{font-size:1.8rem;font-weight:800;color:var(--amber);text-align:center;margin-bottom:.5rem}
+
+/* ── Word Cloud ── */
+#wc-canvas{width:100%;border-radius:10px}
+.wc-sel-btn{padding:.32rem .8rem;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--sub);font-size:.78rem;cursor:pointer;transition:all .2s;
+  font-family:'Noto Sans Thai',sans-serif}
+.wc-sel-btn.active{border-color:var(--cyan);background:rgba(0,229,255,.1);color:var(--cyan)}
+
+/* ── QR ── */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:.75rem}
+#qr-img{width:160px;border-radius:10px}
+
+/* ── Comment Tab ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1.25rem}
+.kpi{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:.9rem 1rem;text-align:center}
+.kpi-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800}
+.kpi-lbl{font-size:.66rem;color:var(--muted);text-transform:uppercase;margin-top:.2rem}
+
+/* ── Live Comment Stream ── */
+#comment-stream{max-height:300px;overflow:hidden;display:flex;flex-direction:column;gap:.5rem}
+.cs-item{display:flex;gap:.65rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid var(--border);animation:slideIn .4s ease}
+.cs-item:last-child{border-bottom:none}
+@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+.cs-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:.28rem}
+.dp{background:var(--green)} .dn{background:var(--red)} .dnt{background:var(--blue)}
+.cs-body{flex:1;min-width:0}
+.cs-author{font-size:.78rem;font-weight:600;color:var(--sub)}
+.cs-text{font-size:.88rem;color:var(--text);line-height:1.45;margin-top:.15rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cs-meta{font-size:.7rem;color:var(--muted);margin-top:.15rem}
+.gi{font-size:.8rem}
+
+/* ── AI Summary ── */
+#ai-box{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:1rem;font-size:.88rem;line-height:1.65;color:#c7d2fe;min-height:56px}
+.theme-tag{display:inline-block;background:rgba(124,58,237,.2);color:#a78bfa;padding:.18rem .52rem;border-radius:999px;font-size:.72rem;margin:.18rem}
+
+/* ── Responsive ── */
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr);padding:1rem}.grid2{grid-template-columns:1fr}.span2{grid-column:1}.tab-pane{padding:1rem}.kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){header{padding:.7rem 1rem;flex-direction:column;align-items:flex-start;gap:.3rem}.stats-row{grid-template-columns:repeat(2,1fr);gap:.6rem;padding:.75rem}.stat-val{font-size:1.4rem}.tab-bar{padding:0 .5rem}.tab-btn{padding:.6rem .7rem;font-size:.78rem}.kpi-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+
+<div class="page">
+<header>
+  <span class="logo">NEXUS</span>
+  <div class="hdr-right">
+    <div class="conn-badge"><span class="blink"></span>Live</div>
+    <div id="clock"></div>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat"><div class="stat-lbl">ผู้เข้าร่วม</div><div class="stat-val grad-cyan" id="s-ci">0</div></div>
+  <div class="stat"><div class="stat-lbl">โหวต / ตอบ</div><div class="stat-val grad-violet" id="s-votes">0</div></div>
+  <div class="stat"><div class="stat-lbl">ความคิดเห็น</div><div class="stat-val grad-amber" id="s-cm">0</div></div>
+  <div class="stat"><div class="stat-lbl">Positive</div><div class="stat-val grad-green" id="s-pos">0%</div></div>
+  <div class="stat">
+    <div class="stat-lbl">Engagement</div>
+    <div class="eng-ring" style="margin-top:.2rem">
+      <canvas id="eng-ring" width="70" height="70"></canvas>
+      <div class="eng-center"><div class="eng-num" id="s-eng">0</div><div class="eng-sub">/ 100</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="swTab('poll',this)">Poll & Word Cloud</button>
+  <button class="tab-btn" onclick="swTab('comment',this)">ความคิดเห็น</button>
+</div>
+
+<!-- ══ TAB: POLL ══ -->
+<div class="tab-pane active" id="tab-poll">
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">ผลการโหวต</div>
+      <div id="poll-results"><p style="color:var(--muted);font-size:.85rem">ยังไม่มี Poll</p></div>
+    </div>
+    <div class="card qr-wrap">
+      <div class="card-title" style="align-self:flex-start">Scan to Join</div>
+      <img id="qr-img" src="" alt="QR"/>
+      <p id="qr-url" style="font-size:.7rem;color:var(--muted);text-align:center;word-break:break-all"></p>
+    </div>
+    <div class="card span2">
+      <div class="card-title">Word Cloud — คำตอบอิสระ</div>
+      <div id="wc-btns" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem"></div>
+      <canvas id="wc-canvas" height="280"></canvas>
+      <p id="wc-empty" style="text-align:center;color:var(--muted);font-size:.85rem;padding:2rem 0;display:none">ยังไม่มีคำตอบอิสระ</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB: COMMENT ══ -->
+<div class="tab-pane" id="tab-comment">
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val" style="color:var(--green)" id="k-pos">0</div><div class="kpi-lbl">Positive</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--blue)"  id="k-neu">0</div><div class="kpi-lbl">Neutral</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--red)"   id="k-neg">0</div><div class="kpi-lbl">Negative</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--amber)" id="k-avg">—</div><div class="kpi-lbl">คะแนนเฉลี่ย ★</div></div>
+  </div>
+
+  <div class="grid2">
+    <!-- Sentiment -->
+    <div class="card">
+      <div class="card-title">Sentiment</div>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <canvas id="sent-chart" width="120" height="120" style="flex-shrink:0"></canvas>
+        <div id="sent-legend" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem"></div>
+      </div>
+    </div>
+    <!-- Gender -->
+    <div class="card">
+      <div class="card-title">เพศ</div>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <canvas id="gender-chart" width="120" height="120" style="flex-shrink:0"></canvas>
+        <div id="gender-legend" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem"></div>
+      </div>
+    </div>
+    <!-- Rating Distribution -->
+    <div class="card span2">
+      <div class="card-title">การกระจายคะแนน ★</div>
+      <div id="rating-dist"></div>
+    </div>
+  </div>
+
+  <!-- AI Summary -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="card-title">AI Event Summary</div>
+    <div id="ai-box">กด "Generate Summary" ในหน้า Admin เพื่อสร้างสรุปอัตโนมัติ</div>
+  </div>
+
+  <!-- Live comment stream -->
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between">
+      <span>Live Comment Stream</span>
+      <span id="cm-count" style="color:var(--cyan);font-size:.82rem">0 รายการ</span>
+    </div>
+    <div id="comment-stream"></div>
+  </div>
+</div>
+</div><!-- .page -->
+
+<script>
+// ── Clock ──
+setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }, 1000);
+
+// ── Engagement ring ──
+const ringCtx = document.getElementById('eng-ring').getContext('2d');
+let engChart  = null;
+function drawRing(score) {
+  if (engChart) engChart.destroy();
+  const color = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444';
+  engChart = new Chart(ringCtx, {
+    type:'doughnut',
+    data:{ datasets:[{ data:[score,100-score], backgroundColor:[color,'rgba(255,255,255,.06)'], borderWidth:0 }] },
+    options:{ cutout:'72%', plugins:{legend:{display:false}}, animation:{duration:800} },
+  });
+  document.getElementById('s-eng').textContent = score;
+  document.getElementById('s-eng').style.color = color;
+}
+drawRing(0);
+
+// ── Charts ──
+const sentChart   = new Chart(document.getElementById('sent-chart'), {
+  type:'doughnut',
+  data:{ labels:['Positive','Neutral','Negative'], datasets:[{data:[0,0,0],backgroundColor:['#10b981','#3b82f6','#ef4444'],borderWidth:0}] },
+  options:{ plugins:{legend:{display:false}}, cutout:'65%' },
+});
+const genderChart = new Chart(document.getElementById('gender-chart'), {
+  type:'doughnut',
+  data:{ labels:['ผู้ชาย','ผู้หญิง','ไม่ระบุ','ไม่ตอบ'], datasets:[{data:[0,0,0,0],backgroundColor:['#3b82f6','#ec4899','#a78bfa','#64748b'],borderWidth:0}] },
+  options:{ plugins:{legend:{display:false}}, cutout:'65%' },
+});
+
+// ── Tab switch ──
+function swTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Socket ──
+const socket = io();
+socket.on('checkin_update', d => { document.getElementById('s-ci').textContent = d.total; fetchEngagement(); });
+socket.on('poll_update',    () => fetchPolls());
+socket.on('comment_update', d => { updateComments(d); fetchEngagement(); });
+socket.on('ai_update',      d => renderAI(d));
+
+// ── QR ──
+fetch('/api/checkin/qr').then(r=>r.json()).then(d => {
+  document.getElementById('qr-img').src = d.qr;
+  document.getElementById('qr-url').textContent = d.url;
+}).catch(()=>{});
+
+// ── Polls ──
+let allPolls = [];
+let selTextPoll = null;
+
+async function fetchPolls() {
+  allPolls = await fetch('/api/poll').then(r=>r.json());
+  const total = allPolls.reduce((s,p) => s + p.totalVotes, 0);
+  document.getElementById('s-votes').textContent = total;
+  renderPollResults();
+  renderWcSelector();
+}
+
+function renderPollResults() {
+  const el  = document.getElementById('poll-results');
+  const act = allPolls.filter(p => p.active);
+  if (!act.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem">ยังไม่มี Poll</p>'; return; }
+  el.innerHTML = act.map(p => {
+    if (p.type === 'choice') {
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tc">choice</span></p>
+        ${(p.options||[]).map(o => {
+          const pct = p.totalVotes ? Math.round(o.votes/p.totalVotes*100) : 0;
+          return `<div class="bar-row"><div class="bar-lbl" title="${o.text}">${o.text}</div>
+            <div class="bar-w"><div class="bar-f" style="width:${pct}%"></div></div>
+            <div class="bar-pct">${pct}%</div></div>`;
+        }).join('')}
+        <p style="font-size:.73rem;color:var(--muted)">${p.voterCount} votes</p></div>`;
+    }
+    if (p.type === 'rating') {
+      const counts = p.ratingCounts||{1:0,2:0,3:0,4:0,5:0};
+      const total  = Object.values(counts).reduce((s,v)=>s+v,0);
+      const maxC   = Math.max(...Object.values(counts),1);
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tr">rating</span></p>
+        ${p.average ? `<div class="r-avg">${p.average} ★</div>` : ''}
+        ${[5,4,3,2,1].map(v=>`<div class="bar-row">
+          <div class="bar-lbl">${v} ★</div>
+          <div class="bar-w"><div class="rbar-f" style="width:${Math.round((counts[v]||0)/maxC*100)}%"></div></div>
+          <div class="bar-pct">${counts[v]||0}</div></div>`).join('')}
+        <p style="font-size:.73rem;color:var(--muted)">${total} ratings</p></div>`;
+    }
+    if (p.type === 'text') {
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tt">word cloud</span></p>
+        <p style="font-size:.8rem;color:var(--muted)">${p.voterCount} คำตอบ — ดู Word Cloud ด้านล่าง</p></div>`;
+    }
+    return '';
+  }).join('');
+}
+
+function renderWcSelector() {
+  const tp  = allPolls.filter(p => p.type === 'text' && p.active);
+  const btns = document.getElementById('wc-btns');
+  btns.innerHTML = tp.map(p =>
+    `<button class="wc-sel-btn${p.id===selTextPoll?' active':''}" onclick="pickWc('${p.id}')">${p.question}</button>`
+  ).join('');
+  if (tp.length && (!selTextPoll || !tp.find(p=>p.id===selTextPoll))) {
+    selTextPoll = tp[0].id;
+    btns.querySelector('.wc-sel-btn')?.classList.add('active');
+  }
+  if (selTextPoll) drawWordCloud(selTextPoll);
+  else { document.getElementById('wc-canvas').style.display='none'; document.getElementById('wc-empty').style.display='block'; }
+}
+
+async function pickWc(id) {
+  selTextPoll = id;
+  document.querySelectorAll('.wc-sel-btn').forEach(b => b.classList.toggle('active', b.textContent === allPolls.find(p=>p.id===id)?.question));
+  drawWordCloud(id);
+}
+
+async function drawWordCloud(pollId) {
+  const res   = await fetch(`/api/poll/${pollId}/wordcloud`).then(r=>r.json());
+  const words = res.words || [];
+  const empty  = document.getElementById('wc-empty');
+  const canvas = document.getElementById('wc-canvas');
+  if (!words.length) { canvas.style.display='none'; empty.style.display='block'; return; }
+  canvas.style.display='block'; empty.style.display='none';
+  const W = canvas.width  = canvas.offsetWidth  || 900;
+  const H = canvas.height = 280;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const colors = ['#00e5ff','#7c3aed','#f59e0b','#10b981','#ec4899','#6366f1','#3b82f6','#a78bfa'];
+  const max = words[0].count;
+  const placed = [];
+  words.forEach((item,i) => {
+    const sz = Math.round(13 + (item.count/max)*50);
+    ctx.font = `${i<4?800:600} ${sz}px 'Syne',sans-serif`;
+    const tw = ctx.measureText(item.word).width;
+    const th = sz * 1.2;
+    let ok = false;
+    for (let t=0;t<140;t++) {
+      const x = Math.random()*(W-tw-8)+4;
+      const y = Math.random()*(H-th-4)+th;
+      if (!placed.some(p=>x<p.x+p.w+5&&x+tw+5>p.x&&y-th<p.y+p.h+5&&y+5>p.y)) {
+        ctx.fillStyle = colors[i%colors.length];
+        ctx.fillText(item.word,x,y);
+        placed.push({x,y:y-th,w:tw,h:th}); ok=true; break;
+      }
+    }
+    if (!ok && placed.length<8) {
+      const x=W/2-tw/2+(Math.random()-.5)*60; const y=H/2+(Math.random()-.5)*50+sz;
+      ctx.fillStyle=colors[i%colors.length]; ctx.fillText(item.word,x,y);
+    }
+  });
+}
+
+// ── Comments ──
+let comments = [];
+
+async function fetchComments() {
+  const data = await fetch('/api/comment').then(r=>r.json());
+  comments = data.comments || [];
+  document.getElementById('s-cm').textContent       = data.total||0;
+  document.getElementById('cm-count').textContent   = (data.total||0)+' รายการ';
+  if (data.sentimentSummary) updateSentiment(data.sentimentSummary);
+  if (data.genderSummary)    updateGender(data.genderSummary);
+  if (data.ratingSummary)    updateRating(data.ratingSummary);
+  renderStream();
+}
+
+function updateComments(data) {
+  if (data.comment) comments.unshift(data.comment);
+  const total = data.total || comments.length;
+  document.getElementById('s-cm').textContent     = total;
+  document.getElementById('cm-count').textContent = total+' รายการ';
+  if (data.sentimentSummary) updateSentiment(data.sentimentSummary);
+  if (data.genderSummary)    updateGender(data.genderSummary);
+  if (data.ratingSummary)    updateRating(data.ratingSummary);
+  if (data.comment) prependComment(data.comment);
+}
+
+function renderStream() {
+  const el = document.getElementById('comment-stream');
+  if (!comments.length) { el.innerHTML='<p style="color:var(--muted);font-size:.85rem">ยังไม่มีความคิดเห็น</p>'; return; }
+  el.innerHTML = comments.slice(0,30).map(c => commentHtml(c)).join('');
+}
+function prependComment(c) {
+  const el  = document.getElementById('comment-stream');
+  const div = document.createElement('div');
+  div.innerHTML = commentHtml(c);
+  el.prepend(div.firstElementChild);
+  while (el.children.length > 30) el.lastElementChild.remove();
+}
+const gIcon = {male:'👨',female:'👩',nonbinary:'🌈',unspecified:'🤫'};
+function commentHtml(c) {
+  const dc = c.sentiment==='positive'?'dp':c.sentiment==='negative'?'dn':'dnt';
+  const stars = c.rating ? '★'.repeat(c.rating) : '';
+  return `<div class="cs-item">
+    <div class="cs-dot ${dc}"></div>
+    <div class="cs-body">
+      <div class="cs-author"><span class="gi">${gIcon[c.gender]||''}</span> ${c.author||'Anonymous'} ${stars?`<span style="color:var(--amber);font-size:.75rem">${stars}</span>`:''}
+      </div>
+      <div class="cs-text">${c.text}</div>
+      <div class="cs-meta">${new Date(c.timestamp).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>
+  </div>`;
+}
+
+function updateSentiment(s) {
+  const pos=s.positive||0, neu=s.neutral||0, neg=s.negative||0, tot=pos+neu+neg||1;
+  document.getElementById('k-pos').textContent = pos;
+  document.getElementById('k-neu').textContent = neu;
+  document.getElementById('k-neg').textContent = neg;
+  document.getElementById('s-pos').textContent = Math.round(pos/tot*100)+'%';
+  sentChart.data.datasets[0].data=[pos,neu,neg]; sentChart.update();
+  document.getElementById('sent-legend').innerHTML =
+    `<span style="color:var(--green)">● Positive: ${pos}</span>
+     <span style="color:var(--blue)">● Neutral: ${neu}</span>
+     <span style="color:var(--red)">● Negative: ${neg}</span>`;
+}
+function updateGender(g) {
+  const m=g.male||0, f=g.female||0, nb=g.nonbinary||0, u=g.unspecified||0;
+  genderChart.data.datasets[0].data=[m,f,nb,u]; genderChart.update();
+  document.getElementById('gender-legend').innerHTML =
+    `<span style="color:#3b82f6">👨 ${m}</span><span style="color:#ec4899">👩 ${f}</span>
+     <span style="color:#a78bfa">🌈 ${nb}</span><span style="color:#64748b">🤫 ${u}</span>`;
+}
+function updateRating(r) {
+  document.getElementById('k-avg').textContent = r.average ? r.average.toFixed(1)+' ★' : '—';
+  const maxC = Math.max(...Object.values(r.counts||{}),1);
+  document.getElementById('rating-dist').innerHTML = [5,4,3,2,1].map(v => {
+    const cnt = r.counts?.[v]||0;
+    return `<div class="bar-row"><div class="bar-lbl">${v} ★</div>
+      <div class="bar-w"><div class="rbar-f" style="width:${Math.round(cnt/maxC*100)}%"></div></div>
+      <div class="bar-pct">${cnt}</div></div>`;
+  }).join('');
+}
+
+// ── Engagement ──
+async function fetchEngagement() {
+  try {
+    const d = await fetch('/api/engagement').then(r=>r.json());
+    drawRing(d.score||0);
+  } catch {}
+}
+
+// ── AI Summary ──
+function renderAI(data) {
+  if (!data?.summary) return;
+  const themesTh = (data.keyThemesTh||data.keyThemes||[]).map(t=>`<span class="theme-tag">${t}</span>`).join('');
+  const themesEn = (data.keyThemesEn||[]).map(t=>`<span class="theme-tag" style="background:rgba(0,229,255,.1);color:var(--cyan)">${t}</span>`).join('');
+  const recs     = (data.recommendations||[]).map(r=>`<li style="margin:.25rem 0">${r}</li>`).join('');
+  document.getElementById('ai-box').innerHTML =
+    `${data.summaryTh ? `<p style="margin-bottom:.5rem;font-weight:500">${data.summaryTh}</p>` : ''}
+     ${data.summaryEn ? `<p style="margin-bottom:.75rem;color:var(--cyan);font-size:.85rem;font-style:italic">${data.summaryEn}</p>` : ''}
+     ${themesTh ? `<div style="margin-bottom:.5rem">${themesTh}</div>` : ''}
+     ${themesEn ? `<div style="margin-bottom:.75rem">${themesEn}</div>` : ''}
+     ${recs ? `<ul style="padding-left:1.2rem;font-size:.82rem;color:var(--sub);border-top:1px solid var(--border);padding-top:.6rem;margin-top:.3rem">${recs}</ul>` : ''}`;
+}
+
+// ── Init ──
+fetchPolls();
+fetchComments();
+fetchEngagement();
+setInterval(fetchPolls, 12000);
+setInterval(fetchEngagement, 20000);
+</script>
+</body>
+</html>

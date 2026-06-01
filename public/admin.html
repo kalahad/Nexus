@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NEXUS — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--cyan:#00e5ff;--violet:#7c3aed;--amber:#f59e0b;
+  --green:#10b981;--red:#ef4444;--blue:#3b82f6;
+  --text:#f1f5f9;--muted:#64748b;--sub:#94a3b8;
+  --glass:rgba(255,255,255,.04);--border:rgba(255,255,255,.08);
+  --surface:rgba(255,255,255,.06);
+}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(100px);opacity:.12;animation:drift 14s ease-in-out infinite alternate;z-index:0}
+.orb1{width:500px;height:500px;background:var(--violet);top:-150px;left:-150px}
+.orb2{width:400px;height:400px;background:var(--cyan);bottom:-100px;right:-100px;animation-delay:-6s}
+@keyframes drift{0%{transform:translate(0,0)}100%{transform:translate(40px,30px) scale(1.08)}}
+
+/* ── Login ── */
+#login-overlay{position:fixed;inset:0;background:rgba(7,9,15,.95);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(20px)}
+.login-box{background:var(--glass);border:1px solid var(--border);border-radius:24px;padding:2.5rem;width:340px;text-align:center}
+.login-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.3rem}
+.login-sub{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+.login-box input{width:100%;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:12px;padding:.7rem 1rem;color:var(--text);font-family:'Noto Sans Thai',sans-serif;font-size:.95rem;outline:none;margin-bottom:1rem;transition:border-color .2s}
+.login-box input:focus{border-color:var(--cyan)}
+#login-err{color:var(--red);font-size:.78rem;min-height:1rem;margin-top:-.4rem;margin-bottom:.75rem}
+
+/* ── Layout ── */
+header{position:relative;z-index:10;backdrop-filter:blur(24px);background:rgba(7,9,15,.8);border-bottom:1px solid var(--border);padding:.8rem 1.5rem;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.badge-admin{background:rgba(124,58,237,.25);color:#a78bfa;border:1px solid rgba(124,58,237,.3);font-size:.68rem;font-weight:700;padding:.18rem .55rem;border-radius:999px;margin-left:.5rem}
+#stat-line{font-size:.75rem;color:var(--muted)}
+.layout{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 49px);position:relative;z-index:1}
+nav{background:rgba(255,255,255,.02);border-right:1px solid var(--border);padding:.85rem 0}
+nav a{display:block;padding:.6rem 1.25rem;font-size:.86rem;color:var(--muted);cursor:pointer;transition:all .15s;text-decoration:none;border-right:2px solid transparent}
+nav a:hover,nav a.active{color:var(--text);border-right-color:var(--cyan);background:rgba(0,229,255,.04)}
+nav .nav-sep{height:1px;background:var(--border);margin:.5rem 1.25rem}
+.main{padding:1.4rem;overflow-y:auto}
+.page{display:none}.page.active{display:block}
+
+/* ── Cards ── */
+.card{background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:16px;padding:1.2rem;margin-bottom:1.2rem}
+.card-title{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:1rem}
+
+/* ── Inputs ── */
+input,textarea,select{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:.6rem .9rem;color:var(--text);font-family:'Noto Sans Thai',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--cyan)}
+select{cursor:pointer}
+select option{background:#1a1f2e}
+textarea{resize:vertical;min-height:65px}
+
+/* ── Buttons ── */
+.btn{padding:.52rem 1.05rem;border-radius:10px;font-family:'Noto Sans Thai',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;border:none;transition:all .18s}
+.btn:hover{opacity:.82;transform:translateY(-1px)}
+.btn-cyan   {background:linear-gradient(135deg,var(--cyan),#0ea5e9);color:#07090f}
+.btn-violet {background:linear-gradient(135deg,var(--violet),#6366f1);color:#fff}
+.btn-green  {background:linear-gradient(135deg,var(--green),#34d399);color:#07090f}
+.btn-red    {background:var(--red);color:#fff}
+.btn-amber  {background:linear-gradient(135deg,var(--amber),#fbbf24);color:#07090f}
+.btn-ghost  {background:transparent;border:1px solid var(--border);color:var(--sub)}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn-sm{padding:.3rem .65rem;font-size:.75rem}
+.btn-full{width:100%}
+
+/* ── Poll type toggle ── */
+.ptype-row{display:flex;gap:.5rem;margin-bottom:.85rem}
+.ptype-btn{flex:1;padding:.5rem;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--muted);font-family:'Noto Sans Thai',sans-serif;font-weight:600;font-size:.82rem;cursor:pointer;transition:all .2s}
+.ptype-btn.active{border-color:var(--cyan);background:rgba(0,229,255,.08);color:var(--cyan)}
+
+/* ── Option rows ── */
+.opt-row{display:flex;gap:.5rem;margin-bottom:.4rem}
+.opt-row input{flex:1}
+
+/* ── Poll cards ── */
+.poll-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem}
+.poll-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;gap:.5rem}
+.poll-item-q{font-weight:600;font-size:.9rem;flex:1;line-height:1.4}
+.poll-item-actions{display:flex;gap:.4rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.type-badge{display:inline-block;padding:.12rem .42rem;border-radius:5px;font-size:.65rem;font-weight:700;margin-left:.35rem}
+.tc{background:rgba(124,58,237,.2);color:#a78bfa}
+.tt{background:rgba(0,229,255,.15);color:var(--cyan)}
+.tr{background:rgba(245,158,11,.2);color:var(--amber)}
+.vis-indicator{font-size:.72rem;padding:.18rem .5rem;border-radius:999px;font-weight:600}
+.vis-on {background:rgba(0,229,255,.15);color:var(--cyan)}
+.vis-off{background:rgba(255,255,255,.06);color:var(--muted)}
+
+/* ── Bar ── */
+.bar-row{display:flex;gap:.6rem;align-items:center;margin-bottom:.35rem}
+.bar-lbl{width:110px;font-size:.78rem;color:var(--sub);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-w{flex:1;background:rgba(255,255,255,.07);border-radius:3px;height:7px;overflow:hidden}
+.bar-f{height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:3px;transition:width .5s}
+.rbar-f{height:100%;background:linear-gradient(90deg,var(--amber),#fbbf24);border-radius:3px;transition:width .5s}
+.bar-n{width:28px;text-align:right;font-size:.74rem;color:var(--muted)}
+
+/* ── Tables ── */
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{text-align:left;padding:.55rem .7rem;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+td{padding:.55rem .7rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--sub)}
+tr:hover td{background:rgba(255,255,255,.02)}
+.sent-chip{display:inline-block;padding:.15rem .48rem;border-radius:999px;font-size:.7rem;font-weight:600}
+.sp{background:rgba(16,185,129,.15);color:#34d399}
+.sn{background:rgba(59,130,246,.15);color:#93c5fd}
+.sg{background:rgba(239,68,68,.15);color:#fca5a5}
+
+/* ── Settings ── */
+.prov-row{display:flex;gap:.5rem;margin-bottom:.85rem}
+.prov-btn{flex:1;padding:.5rem;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--muted);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .2s;font-family:'Noto Sans Thai',sans-serif}
+.prov-btn.active{border-color:var(--violet);background:rgba(124,58,237,.1);color:#a78bfa}
+.key-row{display:flex;gap:.5rem;margin-bottom:1rem}
+.key-row input{flex:1}
+.pill-stat{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .65rem;border-radius:999px;font-size:.74rem;font-weight:600}
+.pill-ok  {background:rgba(16,185,129,.15);color:var(--green)}
+.pill-err {background:rgba(239,68,68,.15);color:var(--red)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  nav{display:flex;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--border);padding:.5rem;gap:.25rem}
+  nav a{padding:.4rem .7rem;font-size:.78rem;border-radius:8px;border-right:none!important}
+  nav a.active{background:rgba(0,229,255,.08);border:1px solid var(--cyan)}
+  .nav-sep{display:none}
+  .main{padding:1rem}
+}
+@media(max-width:480px){
+  .poll-item-header{flex-direction:column}
+  .poll-item-actions{justify-content:flex-start}
+  .key-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div>
+
+<!-- Login -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">NEXUS</div>
+    <div class="login-sub">Admin Panel</div>
+    <input type="password" id="pw" placeholder="รหัสผ่าน" autocomplete="current-password"/>
+    <div id="login-err"></div>
+    <button class="btn btn-cyan btn-full" onclick="login()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<header>
+  <div><span class="logo">NEXUS</span><span class="badge-admin">Admin</span></div>
+  <div id="stat-line">กำลังโหลด...</div>
+</header>
+
+<div class="layout">
+<nav>
+  <a class="active" onclick="showPage('overview',this)">Overview</a>
+  <a onclick="showPage('polls',this)">Polls</a>
+  <a onclick="showPage('comments',this)">Comments</a>
+  <a onclick="showPage('checkins',this)">Check-ins</a>
+  <a onclick="showPage('ai',this)">AI Summary</a>
+  <a onclick="showPage('settings',this)">AI Settings</a>
+  <div class="nav-sep"></div>
+  <a href="/dashboard.html" target="_blank">Live Dashboard ↗</a>
+</nav>
+
+<div class="main">
+
+<!-- ── OVERVIEW ── -->
+<div class="page active" id="page-overview">
+  <div class="card">
+    <div class="card-title">Event Stats</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center">
+      <div><div style="font-size:2rem;font-weight:800;color:var(--cyan);font-family:'Syne',sans-serif" id="ov-ci">0</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">CHECK-INS</div></div>
+      <div><div style="font-size:2rem;font-weight:800;color:var(--amber);font-family:'Syne',sans-serif" id="ov-cm">0</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">COMMENTS</div></div>
+      <div><div style="font-size:2rem;font-weight:800;color:var(--violet);font-family:'Syne',sans-serif" id="ov-pl">0</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">POLLS</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">QR Code</div>
+    <div style="display:flex;gap:1.25rem;align-items:center">
+      <img id="ov-qr" style="width:130px;border-radius:10px"/>
+      <div>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">Participant URL:</p>
+        <p id="ov-url" style="font-size:.75rem;color:var(--cyan);word-break:break-all"></p>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Export Data</div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <a href="/api/export/csv?type=comments"  class="btn btn-ghost">📥 Comments CSV</a>
+      <a href="/api/export/csv?type=checkins"  class="btn btn-ghost">📥 Check-ins CSV</a>
+      <a href="/api/export/csv?type=votes"     class="btn btn-ghost">📥 Votes CSV</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── POLLS ── -->
+<div class="page" id="page-polls">
+  <div class="card">
+    <div class="card-title">สร้าง Poll ใหม่</div>
+    <div class="ptype-row">
+      <button class="ptype-btn active" id="pt-choice" onclick="setPType('choice')">Multiple Choice</button>
+      <button class="ptype-btn"        id="pt-text"   onclick="setPType('text')">Word Cloud (ตอบอิสระ)</button>
+      <button class="ptype-btn"        id="pt-rating" onclick="setPType('rating')">Rating ★</button>
+    </div>
+    <input type="text" id="poll-q" placeholder="คำถาม เช่น คุณทำงานอยู่จังหวัดใด?" style="margin-bottom:.75rem"/>
+    <div id="poll-opts">
+      <div class="opt-row"><input type="text" placeholder="ตัวเลือก 1"/></div>
+      <div class="opt-row"><input type="text" placeholder="ตัวเลือก 2"/></div>
+    </div>
+    <div id="poll-hint" style="display:none;font-size:.8rem;color:var(--muted);background:rgba(255,255,255,.04);border-radius:8px;padding:.65rem;margin-bottom:.5rem"></div>
+    <div style="display:flex;gap:.6rem;margin-top:.75rem;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btn-add-opt" onclick="addOpt()">+ เพิ่มตัวเลือก</button>
+      <button class="btn btn-cyan"  onclick="createPoll()">สร้าง Poll</button>
+    </div>
+    <p id="poll-msg" style="margin-top:.5rem;font-size:.78rem;color:var(--green);min-height:1.1rem"></p>
+  </div>
+  <div class="card">
+    <div class="card-title">Polls ทั้งหมด</div>
+    <div id="poll-list"><p style="color:var(--muted);font-size:.85rem">ยังไม่มี Poll</p></div>
+  </div>
+</div>
+
+<!-- ── COMMENTS ── -->
+<div class="page" id="page-comments">
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between">
+      <span>ความคิดเห็นทั้งหมด</span>
+      <a href="/api/export/csv?type=comments" class="btn btn-ghost btn-sm">📥 Export CSV</a>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Author</th><th>เพศ</th><th>★</th><th>Comment</th><th>Sentiment</th><th>Time</th><th></th></tr></thead>
+        <tbody id="comment-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHECK-INS ── -->
+<div class="page" id="page-checkins">
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between">
+      <span>Check-in List</span>
+      <a href="/api/export/csv?type=checkins" class="btn btn-ghost btn-sm">📥 Export CSV</a>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Session ID</th><th>Time</th></tr></thead>
+        <tbody id="checkin-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI SUMMARY ── -->
+<div class="page" id="page-ai">
+  <div class="card">
+    <div class="card-title">Generate AI Summary</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">ระบบจะรวบรวมความคิดเห็นทั้งหมดและส่ง AI วิเคราะห์ แล้ว broadcast ไปยัง Dashboard อัตโนมัติ</p>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-violet" onclick="generateSummary()">Generate Summary</button>
+      <span id="ai-status" style="font-size:.78rem;color:var(--muted)"></span>
+    </div>
+  </div>
+  <div class="card" id="ai-result-card" style="display:none">
+    <div class="card-title">ผลลัพธ์</div>
+    <div id="ai-result" style="font-size:.88rem;line-height:1.65;color:var(--sub)"></div>
+  </div>
+</div>
+
+<!-- ── AI SETTINGS ── -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <div class="card-title">AI Provider</div>
+    <div class="prov-row">
+      <button class="prov-btn active" id="prov-openai"     onclick="selProvider('openai')">OpenAI</button>
+      <button class="prov-btn"        id="prov-openrouter" onclick="selProvider('openrouter')">OpenRouter</button>
+    </div>
+    <p id="prov-hint" style="font-size:.8rem;color:var(--muted);margin-bottom:.85rem;line-height:1.5"></p>
+    <label style="font-size:.75rem;color:var(--sub);display:block;margin-bottom:.4rem">API Key</label>
+    <div class="key-row">
+      <input type="password" id="api-key" placeholder="sk-... หรือ sk-or-v1-..." autocomplete="off"/>
+      <button class="btn btn-ghost" onclick="toggleKey()">Show</button>
+    </div>
+    <div id="key-status" style="margin-bottom:.85rem"></div>
+    <label style="font-size:.75rem;color:var(--sub);display:block;margin-bottom:.4rem">Model</label>
+    <select id="model-sel" style="margin-bottom:1rem"></select>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-violet" onclick="saveSettings()">บันทึก Settings</button>
+      <button class="btn btn-cyan"   onclick="testAI()">ทดสอบ AI</button>
+      <span id="settings-msg" style="font-size:.78rem;color:var(--green)"></span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">OpenRouter Guide</div>
+    <div style="font-size:.82rem;color:var(--muted);line-height:1.85">
+      <p>1. สมัครที่ <a href="https://openrouter.ai" target="_blank" style="color:var(--cyan)">openrouter.ai</a></p>
+      <p>2. Keys → Create API Key → copy key (ขึ้นต้น <code style="background:rgba(255,255,255,.07);padding:.1rem .3rem;border-radius:4px">sk-or-v1-...</code>)</p>
+      <p>3. เลือก OpenRouter → วาง key → เลือก Model → บันทึก</p>
+    </div>
+  </div>
+  <div class="card" id="test-card" style="display:none">
+    <div class="card-title">ผลทดสอบ</div>
+    <div id="test-body" style="font-size:.86rem;line-height:1.6;color:var(--sub)"></div>
+  </div>
+</div>
+
+</div><!-- .main -->
+</div><!-- .layout -->
+
+<script>
+let adminToken = sessionStorage.getItem('nx_admin');
+if (adminToken) { document.getElementById('login-overlay').style.display='none'; init(); }
+document.getElementById('pw').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+
+async function login() {
+  const pw = document.getElementById('pw').value;
+  const r  = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+  if (r.ok) {
+    adminToken = (await r.json()).token;
+    sessionStorage.setItem('nx_admin', adminToken);
+    document.getElementById('login-overlay').style.display='none';
+    init();
+  } else {
+    document.getElementById('login-err').textContent = 'รหัสผ่านไม่ถูกต้อง';
+  }
+}
+
+// ── Nav ──
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el?.classList.add('active');
+  if (name==='comments') fetchComments();
+  if (name==='checkins') fetchCheckins();
+}
+
+// ── Socket ──
+const socket = io();
+socket.on('checkin_update', d=>{ document.getElementById('ov-ci').textContent=d.total; updateStat(); });
+socket.on('poll_update',    ()=>fetchPolls());
+socket.on('comment_update', d=>{ document.getElementById('ov-cm').textContent=d.total||0; });
+
+// ── Init ──
+function init() {
+  loadQr(); fetchPolls(); loadSettings(); updateStat();
+  setInterval(updateStat, 12000);
+}
+
+async function updateStat() {
+  try {
+    const [ci, cm, pl] = await Promise.all([
+      fetch('/api/checkin').then(r=>r.json()),
+      fetch('/api/comment').then(r=>r.json()),
+      fetch('/api/poll').then(r=>r.json()),
+    ]);
+    document.getElementById('ov-ci').textContent = ci.total;
+    document.getElementById('ov-cm').textContent = cm.total;
+    document.getElementById('ov-pl').textContent = pl.length;
+    document.getElementById('stat-line').textContent = `Check-ins: ${ci.total} · Comments: ${cm.total} · Polls: ${pl.length}`;
+  } catch {}
+}
+
+async function loadQr() {
+  const d = await fetch('/api/checkin/qr').then(r=>r.json()).catch(()=>null);
+  if (d) { document.getElementById('ov-qr').src=d.qr; document.getElementById('ov-url').textContent=d.url; }
+}
+
+// ── Poll type ──
+let curPType = 'choice';
+const ptHints = {
+  choice: '',
+  text:   'ผู้ใช้พิมพ์คำตอบอิสระ — ระบบแสดง Word Cloud อัตโนมัติ',
+  rating: 'ผู้ใช้เลือกคะแนน 1–5 ดาว — Dashboard แสดงค่าเฉลี่ยและการกระจาย',
+};
+function setPType(t) {
+  curPType = t;
+  ['choice','text','rating'].forEach(n=>{
+    document.getElementById('pt-'+n).classList.toggle('active', n===t);
+  });
+  document.getElementById('poll-opts').style.display  = t==='choice' ? 'block' : 'none';
+  document.getElementById('btn-add-opt').style.display= t==='choice' ? 'inline-block' : 'none';
+  document.getElementById('poll-hint').style.display  = t!=='choice' ? 'block' : 'none';
+  document.getElementById('poll-hint').textContent    = ptHints[t];
+}
+function addOpt() {
+  const c = document.querySelectorAll('#poll-opts .opt-row').length+1;
+  const r = document.createElement('div'); r.className='opt-row';
+  r.innerHTML=`<input type="text" placeholder="ตัวเลือก ${c}"/>`;
+  document.getElementById('poll-opts').appendChild(r);
+}
+async function createPoll() {
+  const q = document.getElementById('poll-q').value.trim();
+  if (!q) return;
+  const body = { question:q, type:curPType };
+  if (curPType==='choice') {
+    const opts = [...document.querySelectorAll('#poll-opts input')].map(i=>i.value.trim()).filter(Boolean);
+    if (opts.length<2) { alert('ต้องมีอย่างน้อย 2 ตัวเลือก'); return; }
+    body.options = opts;
+  }
+  await fetch('/api/poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  document.getElementById('poll-q').value='';
+  document.querySelectorAll('#poll-opts input').forEach(i=>i.value='');
+  document.getElementById('poll-msg').textContent=`✓ สร้าง Poll (${curPType}) สำเร็จ`;
+  setTimeout(()=>document.getElementById('poll-msg').textContent='', 2500);
+}
+
+// ── Poll list ──
+async function fetchPolls() {
+  const polls = await fetch('/api/poll').then(r=>r.json());
+  document.getElementById('ov-pl').textContent = polls.length;
+  const el = document.getElementById('poll-list');
+  if (!polls.length) { el.innerHTML='<p style="color:var(--muted);font-size:.85rem">ยังไม่มี Poll</p>'; return; }
+
+  el.innerHTML = polls.map(p => {
+    const tb = p.type==='choice'?'<span class="type-badge tc">choice</span>':p.type==='text'?'<span class="type-badge tt">text</span>':'<span class="type-badge tr">rating</span>';
+    const vis = p.showResults
+      ? `<span class="vis-indicator vis-on">📢 แสดงผลแล้ว</span>`
+      : `<span class="vis-indicator vis-off">🔒 ซ่อนผล</span>`;
+
+    let result = '';
+    if (p.type==='choice' && p.options) {
+      const tot = p.totalVotes||0;
+      result = p.options.map(o=>{const pct=tot?Math.round(o.votes/tot*100):0;return`<div class="bar-row"><div class="bar-lbl" title="${o.text}">${o.text}</div><div class="bar-w"><div class="bar-f" style="width:${pct}%"></div></div><div class="bar-n">${o.votes}</div></div>`;}).join('');
+    } else if (p.type==='rating') {
+      const c=p.ratingCounts||{};const tot=Object.values(c).reduce((s,v)=>s+v,0);const maxC=Math.max(...Object.values(c),1);
+      result = (p.average?`<div style="font-size:1.1rem;font-weight:800;color:var(--amber);margin-bottom:.4rem">${p.average} ★</div>`:'')
+        + [5,4,3,2,1].map(v=>`<div class="bar-row"><div class="bar-lbl">${v} ★</div><div class="bar-w"><div class="rbar-f" style="width:${Math.round((c[v]||0)/maxC*100)}%"></div></div><div class="bar-n">${c[v]||0}</div></div>`).join('');
+    } else if (p.type==='text') {
+      result = `<p style="font-size:.78rem;color:var(--muted)">${p.voterCount} คำตอบ</p>`;
+    }
+
+    return `<div class="poll-item">
+      <div class="poll-item-header">
+        <div class="poll-item-q">${p.question}${tb}</div>
+        <div class="poll-item-actions">
+          ${vis}
+          <button class="btn btn-${p.showResults?'amber':'cyan'} btn-sm" onclick="toggleVis('${p.id}',${!p.showResults})">
+            ${p.showResults?'ซ่อนผล':'แสดงผล'}
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleActive('${p.id}',${!p.active})">
+            ${p.active?'ปิด Poll':'เปิด Poll'}
+          </button>
+          <button class="btn btn-red btn-sm" onclick="deletePoll('${p.id}')">ลบ</button>
+        </div>
+      </div>
+      ${result}
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem">${p.voterCount} responses · ${p.active?'<span style="color:var(--green)">เปิดอยู่</span>':'<span style="color:var(--red)">ปิดแล้ว</span>'}</p>
+    </div>`;
+  }).join('');
+}
+
+async function toggleVis(id, show) {
+  await fetch(`/api/poll/${id}/visibility`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({showResults:show})});
+  fetchPolls();
+}
+async function toggleActive(id, active) {
+  await fetch(`/api/poll/${id}/active`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active})});
+  fetchPolls();
+}
+async function deletePoll(id) {
+  if (!confirm('ลบ Poll นี้?')) return;
+  await fetch(`/api/poll/${id}`,{method:'DELETE'});
+  fetchPolls();
+}
+
+// ── Comments ──
+async function fetchComments() {
+  const data = await fetch('/api/comment').then(r=>r.json());
+  const gi = {male:'👨',female:'👩',nonbinary:'🌈',unspecified:'🤫'};
+  document.getElementById('comment-table').innerHTML = [...data.comments].reverse().map(c=>`<tr>
+    <td style="font-weight:600">${c.author}</td>
+    <td>${gi[c.gender]||''} ${c.gender||''}</td>
+    <td style="color:var(--amber)">${c.rating?'★'.repeat(c.rating):'—'}</td>
+    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.text}">${c.text}</td>
+    <td><span class="sent-chip ${c.sentiment==='positive'?'sp':c.sentiment==='negative'?'sg':'sn'}">${c.sentiment}</span></td>
+    <td style="white-space:nowrap">${new Date(c.timestamp).toLocaleTimeString('th-TH')}</td>
+    <td><button class="btn btn-red btn-sm" onclick="delComment('${c.id}')">ลบ</button></td>
+  </tr>`).join('');
+}
+async function delComment(id) {
+  await fetch(`/api/comment/${id}`,{method:'DELETE'});
+  fetchComments();
+}
+
+// ── Check-ins ──
+async function fetchCheckins() {
+  const data = await fetch('/api/checkin').then(r=>r.json());
+  document.getElementById('checkin-table').innerHTML = data.checkins.map((c,i)=>`<tr>
+    <td>${i+1}</td>
+    <td style="font-weight:600">${c.name}</td>
+    <td style="font-size:.72rem;color:var(--muted)">${c.sessionId.slice(0,14)}...</td>
+    <td style="white-space:nowrap">${new Date(c.timestamp).toLocaleTimeString('th-TH')}</td>
+  </tr>`).join('');
+}
+
+// ── AI Summary ──
+async function generateSummary() {
+  document.getElementById('ai-status').textContent='กำลังวิเคราะห์...';
+  try {
+    const cm = await fetch('/api/comment').then(r=>r.json());
+    if (!cm.comments?.length) { document.getElementById('ai-status').textContent='ยังไม่มีความคิดเห็น'; return; }
+    const r  = await fetch('/api/ai/summary',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({comments:cm.comments.map(c=>c.text)})});
+    const d  = await r.json();
+    document.getElementById('ai-status').textContent='✓ ส่งไปยัง Dashboard แล้ว';
+    document.getElementById('ai-result-card').style.display='block';
+    const themes=(d.keyThemes||[]).map(t=>`<span style="display:inline-block;background:rgba(124,58,237,.2);color:#a78bfa;padding:.18rem .5rem;border-radius:999px;font-size:.72rem;margin:.18rem">${t}</span>`).join('');
+    const bd=d.sentimentBreakdown||{};
+    document.getElementById('ai-result').innerHTML=`<p style="margin-bottom:.7rem">${d.summary||''}</p>${themes}
+      <div style="margin-top:.75rem;font-size:.78rem;display:flex;gap:.85rem">
+        <span style="color:var(--green)">Positive: ${bd.positive||0}</span>
+        <span style="color:var(--blue)">Neutral: ${bd.neutral||0}</span>
+        <span style="color:var(--red)">Negative: ${bd.negative||0}</span>
+      </div>`;
+  } catch(e) { document.getElementById('ai-status').textContent='Error: '+e.message; }
+}
+
+// ── AI Settings ──
+let curProvider = 'openai';
+const provHints = {
+  openai:     'ใช้ OpenAI API โดยตรง — GPT-4o, GPT-3.5 Turbo',
+  openrouter: 'รวม AI หลายเจ้าในคีย์เดียว (OpenAI, Anthropic, Google, Meta, Mistral)',
+};
+async function loadSettings() {
+  try {
+    const s = await fetch('/api/settings').then(r=>r.json());
+    curProvider = s.provider||'openai';
+    document.getElementById('prov-openai').classList.toggle('active', curProvider==='openai');
+    document.getElementById('prov-openrouter').classList.toggle('active', curProvider==='openrouter');
+    document.getElementById('prov-hint').textContent = provHints[curProvider]||'';
+    if (s.apiKeySet) {
+      document.getElementById('api-key').placeholder = s.apiKeyMasked||'(configured)';
+      document.getElementById('key-status').innerHTML='<span class="pill-stat pill-ok">✓ API Key ตั้งค่าแล้ว</span>';
+    }
+    await loadModels(curProvider, s.model);
+  } catch {}
+}
+async function loadModels(provider, sel) {
+  const models = await fetch(`/api/settings/models?provider=${provider}`).then(r=>r.json());
+  const el = document.getElementById('model-sel');
+  el.innerHTML = models.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${m.label}</option>`).join('');
+}
+function selProvider(p) {
+  curProvider = p;
+  document.getElementById('prov-openai').classList.toggle('active', p==='openai');
+  document.getElementById('prov-openrouter').classList.toggle('active', p==='openrouter');
+  document.getElementById('prov-hint').textContent = provHints[p]||'';
+  loadModels(p, null);
+}
+function toggleKey() {
+  const el=document.getElementById('api-key'); el.type=el.type==='password'?'text':'password';
+}
+async function saveSettings() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const model  = document.getElementById('model-sel').value;
+  const body   = {provider:curProvider, model};
+  if (apiKey) body.apiKey = apiKey;
+  const r = await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if (r.ok) {
+    document.getElementById('settings-msg').textContent='✓ บันทึกสำเร็จ';
+    if (apiKey) {
+      document.getElementById('api-key').value='';
+      document.getElementById('api-key').placeholder=apiKey.slice(0,8)+'...';
+      document.getElementById('key-status').innerHTML='<span class="pill-stat pill-ok">✓ API Key ตั้งค่าแล้ว</span>';
+    }
+    setTimeout(()=>document.getElementById('settings-msg').textContent='', 2500);
+  }
+}
+async function testAI() {
+  document.getElementById('test-card').style.display='block';
+  document.getElementById('test-body').textContent='กำลังทดสอบ...';
+  try {
+    const r = await fetch('/api/ai/summary',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({comments:['ชอบงานนี้มากครับ','ห้องเย็นเกินไปนิดนึง','วิทยากรเก่งมาก','อยากให้มีงานแบบนี้อีก']})});
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('test-body').innerHTML=`<span style="color:var(--green)">✓ ทดสอบสำเร็จ</span><p style="margin-top:.5rem">${d.summary||''}</p>`;
+  } catch(e) {
+    document.getElementById('test-body').innerHTML=`<span class="pill-stat pill-err">Error: ${e.message}</span>`;
+  }
+}
+</script>
+</body>
+</html>

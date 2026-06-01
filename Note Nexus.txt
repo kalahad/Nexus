@@ -1,0 +1,21 @@
+หน้าURLParticipant (check-in/vote/comment) http://localhost:3000/index.htmlLive 
+Dashboard (projector) http://localhost:3000/dashboard.html
+Admin Panel http://localhost:3000/admin.html
+
+
+http://localhost:3000/admin.html
+รหัสผ่านเริ่มต้น: a-d-m-i-n-1-2-3-4 (del-)
+
+google Sheets (kulwarun@gmail.com)
+https://docs.google.com/spreadsheets/d/1tAqzHa4xAuGKHL6eXpOcjWx40oFoMssdRgS9S2GSeBU/edit?usp=sharing
+
+
+
+------- สร้าง poll ------
+
+Nexus นี้สนใจหรือไม่ (ระดับ 1:น้อย  -> 5:มาก)
+
+ท่านสามารถนำ ระบบ Nexus ไปใช้ได้กับงานตนเอง ในระดับใด  (ระดับ 1:น้อย  -> 5:มาก)
+
+ตอบอิสระ
+ท่านทำงานอยู่ธุระกิจด้านใด

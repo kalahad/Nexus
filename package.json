@@ -1,0 +1,27 @@
+{
+  "name": "nexus-app",
+  "version": "1.0.0",
+  "description": "NEXUS — Unified Event Intelligence Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "2.8.5",
+    "debug": "4.3.4",
+    "dotenv": "16.4.5",
+    "express": "4.19.2",
+    "googleapis": "128.0.0",
+    "openai": "4.52.7",
+    "qrcode": "1.5.3",
+    "socket.io": "4.7.5",
+    "uuid": "9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.4"
+  },
+  "overrides": {
+    "debug": "4.3.4"
+  }
+}
