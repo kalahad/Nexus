@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -7,18 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/css/nexus-theme.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#07090f;--cyan:#00e5ff;--violet:#7c3aed;--amber:#f59e0b;
-  --green:#10b981;--red:#ef4444;--blue:#3b82f6;--pink:#ec4899;
-  --text:#f1f5f9;--muted:#64748b;--sub:#94a3b8;
-  --glass:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);
-}
 html,body{height:100%}
-body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;transition:var(--trans)}
 
 /* ── Orbs ── */
 .orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(100px);opacity:.14;animation:drift 14s ease-in-out infinite alternate;z-index:0}
@@ -29,9 +24,9 @@ body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--te
 
 /* ── Layout ── */
 .page{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
-header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:rgba(7,9,15,.75);
+header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:var(--header-bg);
   border-bottom:1px solid var(--border);padding:1rem 2rem;
-  display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0;transition:var(--trans)}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;
   background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hdr-right{display:flex;align-items:center;gap:1.25rem}
@@ -42,7 +37,7 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 
 /* ── Stats row ── */
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;padding:1.25rem 2rem;flex-shrink:0}
-.stat{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:1rem 1.1rem}
+.stat{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:1rem 1.1rem;transition:var(--trans)}
 .stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem}
 .stat-val{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
 .grad-cyan  {background:linear-gradient(135deg,var(--cyan),#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -58,10 +53,11 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 .eng-sub{font-size:.6rem;color:var(--muted)}
 
 /* ── Tabs ── */
-.tab-bar{display:flex;padding:0 2rem;border-bottom:1px solid var(--border);flex-shrink:0;backdrop-filter:blur(12px);background:rgba(7,9,15,.4)}
+.tab-bar{display:flex;padding:0 2rem;border-bottom:1px solid var(--border);flex-shrink:0;backdrop-filter:blur(12px);background:var(--nav-bg);transition:var(--trans)}
 .tab-btn{padding:.7rem 1.4rem;font-family:'Noto Sans Thai',sans-serif;font-size:.88rem;font-weight:600;
   color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s}
 .tab-btn.active{color:var(--text);border-bottom-color:var(--cyan)}
+.tab-btn:hover:not(.active){color:var(--text)}
 
 /* ── Tab panes ── */
 .tab-pane{display:none;padding:1.5rem 2rem;overflow-y:auto}
@@ -69,7 +65,7 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 
 /* ── Glass card ── */
 .card{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:var(--glass);
-  border:1px solid var(--border);border-radius:18px;padding:1.25rem}
+  border:1px solid var(--border);border-radius:18px;padding:1.25rem;transition:var(--trans)}
 .card-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:1rem}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
 .span2{grid-column:1/-1}
@@ -84,7 +80,7 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 .tr{background:rgba(245,158,11,.2);color:var(--amber)}
 .bar-row{display:flex;gap:.6rem;align-items:center;margin-bottom:.4rem}
 .bar-lbl{width:120px;font-size:.8rem;color:var(--sub);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar-w{flex:1;background:rgba(255,255,255,.07);border-radius:4px;height:8px;overflow:hidden}
+.bar-w{flex:1;background:var(--prog-track);border-radius:4px;height:8px;overflow:hidden}
 .bar-f{height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:4px;transition:width .6s}
 .bar-pct{width:34px;text-align:right;font-size:.75rem;color:var(--muted)}
 
@@ -105,13 +101,13 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 
 /* ── Comment Tab ── */
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1.25rem}
-.kpi{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:.9rem 1rem;text-align:center}
+.kpi{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:.9rem 1rem;text-align:center;transition:var(--trans)}
 .kpi-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800}
 .kpi-lbl{font-size:.66rem;color:var(--muted);text-transform:uppercase;margin-top:.2rem}
 
 /* ── Live Comment Stream ── */
 #comment-stream{max-height:300px;overflow:hidden;display:flex;flex-direction:column;gap:.5rem}
-.cs-item{display:flex;gap:.65rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid var(--border);animation:slideIn .4s ease}
+.cs-item{display:flex;gap:.65rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid var(--border);animation:slideIn .4s ease;transition:var(--trans)}
 .cs-item:last-child{border-bottom:none}
 @keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
 .cs-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:.28rem}
@@ -137,21 +133,36 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 
 <div class="page">
 <header>
-  <span class="logo">NEXUS</span>
+  <div style="display:flex;align-items:center;gap:.65rem">
+    <svg style="width:30px;height:30px;flex-shrink:0" viewBox="0 0 36 36" fill="none">
+      <defs><linearGradient id="lgd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--cyan)"/><stop offset="100%" stop-color="var(--violet)"/></linearGradient></defs>
+      <polygon points="18,2 32,10 32,26 18,34 4,26 4,10" stroke="url(#lgd)" stroke-width="1.8" fill="none"/>
+      <circle cx="18" cy="18" r="3" fill="url(#lgd)"/>
+      <circle cx="10" cy="12" r="1.8" fill="url(#lgd)" opacity=".8"/><circle cx="26" cy="12" r="1.8" fill="url(#lgd)" opacity=".8"/>
+      <line x1="18" y1="18" x2="10" y2="12" stroke="url(#lgd)" stroke-width="1" opacity=".7"/>
+      <line x1="18" y1="18" x2="26" y2="12" stroke="url(#lgd)" stroke-width="1" opacity=".7"/>
+    </svg>
+    <div>
+      <span class="logo">NEXUS</span>
+      <div style="font-size:.58rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase" data-i18n="dash_live">Live Dashboard</div>
+    </div>
+  </div>
   <div class="hdr-right">
     <div class="conn-badge"><span class="blink"></span>Live</div>
+    <button class="icon-btn" id="nx-lang-btn" onclick="NX.toggleLang()">EN</button>
+    <button class="icon-btn" onclick="NX.toggleTheme()"><span id="nx-theme-icon">🌙</span></button>
     <div id="clock"></div>
   </div>
 </header>
 
 <!-- Stats -->
 <div class="stats-row">
-  <div class="stat"><div class="stat-lbl">ผู้เข้าร่วม</div><div class="stat-val grad-cyan" id="s-ci">0</div></div>
-  <div class="stat"><div class="stat-lbl">โหวต / ตอบ</div><div class="stat-val grad-violet" id="s-votes">0</div></div>
-  <div class="stat"><div class="stat-lbl">ความคิดเห็น</div><div class="stat-val grad-amber" id="s-cm">0</div></div>
-  <div class="stat"><div class="stat-lbl">Positive</div><div class="stat-val grad-green" id="s-pos">0%</div></div>
+  <div class="stat"><div class="stat-lbl" data-i18n="stat_checkin">ผู้เข้าร่วม</div><div class="stat-val grad-cyan" id="s-ci">0</div></div>
+  <div class="stat"><div class="stat-lbl" data-i18n="stat_votes">โหวต / ตอบ</div><div class="stat-val grad-violet" id="s-votes">0</div></div>
+  <div class="stat"><div class="stat-lbl" data-i18n="stat_comments">ความคิดเห็น</div><div class="stat-val grad-amber" id="s-cm">0</div></div>
+  <div class="stat"><div class="stat-lbl" data-i18n="stat_positive">Positive</div><div class="stat-val grad-green" id="s-pos">0%</div></div>
   <div class="stat">
-    <div class="stat-lbl">Engagement</div>
+    <div class="stat-lbl" data-i18n="stat_engage">Engagement</div>
     <div class="eng-ring" style="margin-top:.2rem">
       <canvas id="eng-ring" width="70" height="70"></canvas>
       <div class="eng-center"><div class="eng-num" id="s-eng">0</div><div class="eng-sub">/ 100</div></div>
@@ -161,27 +172,27 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 
 <!-- Tabs -->
 <div class="tab-bar">
-  <button class="tab-btn active" onclick="swTab('poll',this)">Poll & Word Cloud</button>
-  <button class="tab-btn" onclick="swTab('comment',this)">ความคิดเห็น</button>
+  <button class="tab-btn active" onclick="swTab('poll',this)" data-i18n="tab_poll">Poll & Word Cloud</button>
+  <button class="tab-btn" onclick="swTab('comment',this)" data-i18n="tab_comment">ความคิดเห็น</button>
 </div>
 
 <!-- ══ TAB: POLL ══ -->
 <div class="tab-pane active" id="tab-poll">
   <div class="grid2">
     <div class="card">
-      <div class="card-title">ผลการโหวต</div>
-      <div id="poll-results"><p style="color:var(--muted);font-size:.85rem">ยังไม่มี Poll</p></div>
+      <div class="card-title" data-i18n="card_poll_results">ผลการโหวต</div>
+      <div id="poll-results"><p style="color:var(--muted);font-size:.85rem" data-i18n="no_poll">ยังไม่มี Poll</p></div>
     </div>
     <div class="card qr-wrap">
-      <div class="card-title" style="align-self:flex-start">Scan to Join</div>
+      <div class="card-title" style="align-self:flex-start" data-i18n="card_qr">Scan to Join</div>
       <img id="qr-img" src="" alt="QR"/>
       <p id="qr-url" style="font-size:.7rem;color:var(--muted);text-align:center;word-break:break-all"></p>
     </div>
     <div class="card span2">
-      <div class="card-title">Word Cloud — คำตอบอิสระ</div>
+      <div class="card-title" data-i18n="card_wordcloud">Word Cloud — คำตอบอิสระ</div>
       <div id="wc-btns" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem"></div>
       <canvas id="wc-canvas" height="280"></canvas>
-      <p id="wc-empty" style="text-align:center;color:var(--muted);font-size:.85rem;padding:2rem 0;display:none">ยังไม่มีคำตอบอิสระ</p>
+      <p id="wc-empty" style="text-align:center;color:var(--muted);font-size:.85rem;padding:2rem 0;display:none" data-i18n="wc_empty">ยังไม่มีคำตอบอิสระ</p>
     </div>
   </div>
 </div>
@@ -190,16 +201,16 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 <div class="tab-pane" id="tab-comment">
   <!-- KPIs -->
   <div class="kpi-row">
-    <div class="kpi"><div class="kpi-val" style="color:var(--green)" id="k-pos">0</div><div class="kpi-lbl">Positive</div></div>
-    <div class="kpi"><div class="kpi-val" style="color:var(--blue)"  id="k-neu">0</div><div class="kpi-lbl">Neutral</div></div>
-    <div class="kpi"><div class="kpi-val" style="color:var(--red)"   id="k-neg">0</div><div class="kpi-lbl">Negative</div></div>
-    <div class="kpi"><div class="kpi-val" style="color:var(--amber)" id="k-avg">—</div><div class="kpi-lbl">คะแนนเฉลี่ย ★</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--green)" id="k-pos">0</div><div class="kpi-lbl" data-i18n="kpi_pos">Positive</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--blue)"  id="k-neu">0</div><div class="kpi-lbl" data-i18n="kpi_neu">Neutral</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--red)"   id="k-neg">0</div><div class="kpi-lbl" data-i18n="kpi_neg">Negative</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--amber)" id="k-avg">—</div><div class="kpi-lbl" data-i18n="kpi_avg">คะแนนเฉลี่ย ★</div></div>
   </div>
 
   <div class="grid2">
     <!-- Sentiment -->
     <div class="card">
-      <div class="card-title">Sentiment</div>
+      <div class="card-title" data-i18n="card_sentiment">Sentiment</div>
       <div style="display:flex;align-items:center;gap:1rem">
         <canvas id="sent-chart" width="120" height="120" style="flex-shrink:0"></canvas>
         <div id="sent-legend" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem"></div>
@@ -207,7 +218,7 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
     </div>
     <!-- Gender -->
     <div class="card">
-      <div class="card-title">เพศ</div>
+      <div class="card-title" data-i18n="card_gender">เพศ</div>
       <div style="display:flex;align-items:center;gap:1rem">
         <canvas id="gender-chart" width="120" height="120" style="flex-shrink:0"></canvas>
         <div id="gender-legend" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem"></div>
@@ -215,31 +226,46 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
     </div>
     <!-- Rating Distribution -->
     <div class="card span2">
-      <div class="card-title">การกระจายคะแนน ★</div>
+      <div class="card-title" data-i18n="card_rating_dist">การกระจายคะแนน ★</div>
       <div id="rating-dist"></div>
     </div>
   </div>
 
+  <!-- Rating dist (already has data-i18n via card-title update) -->
+
   <!-- AI Summary -->
   <div class="card" style="margin-bottom:1.25rem">
-    <div class="card-title">AI Event Summary</div>
-    <div id="ai-box">กด "Generate Summary" ในหน้า Admin เพื่อสร้างสรุปอัตโนมัติ</div>
+    <div class="card-title" data-i18n="card_ai">AI Event Summary</div>
+    <div id="ai-box" data-i18n="ai_placeholder">กด "Generate Summary" ในหน้า Admin เพื่อสร้างสรุปอัตโนมัติ</div>
   </div>
 
   <!-- Live comment stream -->
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between">
-      <span>Live Comment Stream</span>
-      <span id="cm-count" style="color:var(--cyan);font-size:.82rem">0 รายการ</span>
+      <span data-i18n="card_stream">Live Comment Stream</span>
+      <span id="cm-count" style="color:var(--cyan);font-size:.82rem">0</span>
     </div>
     <div id="comment-stream"></div>
   </div>
 </div>
 </div><!-- .page -->
 
+<script src="/js/nexus-ui.js"></script>
 <script>
+// ── onLangChange: re-render dynamic content ──
+window.onLangChange = function() {
+  fetchPolls();
+  fetchComments();
+  // re-render ai_placeholder if box has default text
+  const aiBox = document.getElementById('ai-box');
+  if (aiBox && aiBox.dataset.i18n) aiBox.textContent = NX.t('ai_placeholder');
+};
+
 // ── Clock ──
-setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }, 1000);
+setInterval(() => {
+  const loc = NX.lang === 'th' ? 'th-TH' : 'en-US';
+  document.getElementById('clock').textContent = new Date().toLocaleString(loc,{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}, 1000);
 
 // ── Engagement ring ──
 const ringCtx = document.getElementById('eng-ring').getContext('2d');
@@ -305,33 +331,33 @@ async function fetchPolls() {
 function renderPollResults() {
   const el  = document.getElementById('poll-results');
   const act = allPolls.filter(p => p.active);
-  if (!act.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem">ยังไม่มี Poll</p>'; return; }
+  if (!act.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.85rem">${NX.t('no_poll')}</p>`; return; }
   el.innerHTML = act.map(p => {
     if (p.type === 'choice') {
-      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tc">choice</span></p>
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tc">${NX.t('tag_choice')}</span></p>
         ${(p.options||[]).map(o => {
           const pct = p.totalVotes ? Math.round(o.votes/p.totalVotes*100) : 0;
           return `<div class="bar-row"><div class="bar-lbl" title="${o.text}">${o.text}</div>
             <div class="bar-w"><div class="bar-f" style="width:${pct}%"></div></div>
             <div class="bar-pct">${pct}%</div></div>`;
         }).join('')}
-        <p style="font-size:.73rem;color:var(--muted)">${p.voterCount} votes</p></div>`;
+        <p style="font-size:.73rem;color:var(--muted)">${p.voterCount} ${NX.t('voters')}</p></div>`;
     }
     if (p.type === 'rating') {
       const counts = p.ratingCounts||{1:0,2:0,3:0,4:0,5:0};
       const total  = Object.values(counts).reduce((s,v)=>s+v,0);
       const maxC   = Math.max(...Object.values(counts),1);
-      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tr">rating</span></p>
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tr">Rating</span></p>
         ${p.average ? `<div class="r-avg">${p.average} ★</div>` : ''}
         ${[5,4,3,2,1].map(v=>`<div class="bar-row">
           <div class="bar-lbl">${v} ★</div>
           <div class="bar-w"><div class="rbar-f" style="width:${Math.round((counts[v]||0)/maxC*100)}%"></div></div>
           <div class="bar-pct">${counts[v]||0}</div></div>`).join('')}
-        <p style="font-size:.73rem;color:var(--muted)">${total} ratings</p></div>`;
+        <p style="font-size:.73rem;color:var(--muted)">${total} ${NX.t('raters')}</p></div>`;
     }
     if (p.type === 'text') {
-      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tt">word cloud</span></p>
-        <p style="font-size:.8rem;color:var(--muted)">${p.voterCount} คำตอบ — ดู Word Cloud ด้านล่าง</p></div>`;
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tt">${NX.t('tag_wc')}</span></p>
+        <p style="font-size:.8rem;color:var(--muted)">${p.voterCount} ${NX.t('responders')}</p></div>`;
     }
     return '';
   }).join('');
@@ -400,7 +426,7 @@ async function fetchComments() {
   const data = await fetch('/api/comment').then(r=>r.json());
   comments = data.comments || [];
   document.getElementById('s-cm').textContent       = data.total||0;
-  document.getElementById('cm-count').textContent   = (data.total||0)+' รายการ';
+  document.getElementById('cm-count').textContent   = (data.total||0)+' '+(NX.lang==='th'?'รายการ':'items');
   if (data.sentimentSummary) updateSentiment(data.sentimentSummary);
   if (data.genderSummary)    updateGender(data.genderSummary);
   if (data.ratingSummary)    updateRating(data.ratingSummary);
@@ -411,7 +437,7 @@ function updateComments(data) {
   if (data.comment) comments.unshift(data.comment);
   const total = data.total || comments.length;
   document.getElementById('s-cm').textContent     = total;
-  document.getElementById('cm-count').textContent = total+' รายการ';
+  document.getElementById('cm-count').textContent = total+' '+(NX.lang==='th'?'รายการ':'items');
   if (data.sentimentSummary) updateSentiment(data.sentimentSummary);
   if (data.genderSummary)    updateGender(data.genderSummary);
   if (data.ratingSummary)    updateRating(data.ratingSummary);
@@ -420,7 +446,7 @@ function updateComments(data) {
 
 function renderStream() {
   const el = document.getElementById('comment-stream');
-  if (!comments.length) { el.innerHTML='<p style="color:var(--muted);font-size:.85rem">ยังไม่มีความคิดเห็น</p>'; return; }
+  if (!comments.length) { el.innerHTML=`<p style="color:var(--muted);font-size:.85rem">${NX.t('stream_empty')}</p>`; return; }
   el.innerHTML = comments.slice(0,30).map(c => commentHtml(c)).join('');
 }
 function prependComment(c) {
@@ -440,7 +466,7 @@ function commentHtml(c) {
       <div class="cs-author"><span class="gi">${gIcon[c.gender]||''}</span> ${c.author||'Anonymous'} ${stars?`<span style="color:var(--amber);font-size:.75rem">${stars}</span>`:''}
       </div>
       <div class="cs-text">${c.text}</div>
-      <div class="cs-meta">${new Date(c.timestamp).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="cs-meta">${new Date(c.timestamp).toLocaleTimeString(NX.lang==='th'?'th-TH':'en-US',{hour:'2-digit',minute:'2-digit'})}</div>
     </div>
   </div>`;
 }

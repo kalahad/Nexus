@@ -1,464 +1,352 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>NEXUS — Participant</title>
+<title>NEXUS — Event Intelligence Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/css/nexus-theme.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#07090f; --cyan:#00e5ff; --violet:#7c3aed; --amber:#f59e0b;
-  --text:#f1f5f9; --muted:#64748b; --sub:#94a3b8;
-  --glass:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08);
-}
-html{scroll-behavior:smooth}
-body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+/* ─── Page-specific layout ─── */
+.page{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:1.1rem 1rem 3.5rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+.col{display:flex;flex-direction:column;gap:.85rem}
 
-/* ── Orbs ── */
-.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(90px);opacity:.18;animation:drift 12s ease-in-out infinite alternate}
-.orb1{width:500px;height:500px;background:var(--violet);top:-150px;left:-150px;animation-delay:0s}
-.orb2{width:400px;height:400px;background:var(--cyan);bottom:-100px;right:-100px;animation-delay:-4s}
-.orb3{width:300px;height:300px;background:var(--amber);top:40%;left:40%;animation-delay:-8s}
-@keyframes drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(40px,30px) scale(1.1)}}
-
-/* ── Header ── */
-header{position:sticky;top:0;z-index:50;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  background:rgba(7,9,15,.7);border-bottom:1px solid var(--border);padding:.9rem 1.5rem;
-  display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;
-  background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.conn-pill{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)}
-.conn-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse2 2s infinite}
-@keyframes pulse2{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{opacity:.7;box-shadow:0 0 0 6px transparent}}
-
-/* ── Container ── */
-.wrap{max-width:640px;margin:0 auto;padding:1.5rem 1rem 6rem;display:flex;flex-direction:column;gap:1.25rem}
-
-/* ── Glass Card ── */
-.card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border:1px solid var(--border);border-radius:20px;padding:1.4rem;
-  transition:border-color .2s}
-.card:hover{border-color:rgba(255,255,255,.14)}
-.card-title{font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;
-  color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem}
-
-/* ── Inputs ── */
-input,textarea{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);
-  border-radius:12px;padding:.7rem 1rem;color:var(--text);font-family:'Noto Sans Thai',sans-serif;
-  font-size:.95rem;outline:none;transition:border-color .2s,box-shadow .2s}
-input:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,229,255,.12)}
-textarea{resize:vertical;min-height:90px;padding-bottom:1.8rem}
-
-/* ── Buttons ── */
-.btn{padding:.7rem 1.4rem;border-radius:12px;font-family:'Noto Sans Thai',sans-serif;
-  font-size:.9rem;font-weight:600;cursor:pointer;border:none;transition:all .2s}
-.btn-cyan{background:linear-gradient(135deg,var(--cyan),#0ea5e9);color:#07090f}
-.btn-violet{background:linear-gradient(135deg,var(--violet),#6366f1);color:#fff}
-.btn-full{width:100%}
-.btn:hover{opacity:.85;transform:translateY(-1px)}
-.btn:active{transform:translateY(0)}
-
-/* ── Badges ── */
-.badge-confirm{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem 1rem;
-  border-radius:999px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.3);
-  color:var(--cyan);font-size:.82rem;font-weight:600;animation:popIn .4s ease}
-@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-
-/* ── Poll ── */
-.poll-block{margin-bottom:1.25rem}
-.poll-q{font-weight:600;margin-bottom:.85rem;font-size:.95rem;line-height:1.5}
-.poll-type-tag{display:inline-block;padding:.15rem .5rem;border-radius:6px;font-size:.68rem;font-weight:700;margin-left:.5rem;vertical-align:middle}
-.tag-choice{background:rgba(124,58,237,.2);color:#a78bfa}
-.tag-text  {background:rgba(0,229,255,.15);color:var(--cyan)}
-.tag-rating{background:rgba(245,158,11,.2);color:var(--amber)}
-
-/* Choice options */
-.opt-btn{display:flex;justify-content:space-between;align-items:center;width:100%;
-  background:rgba(255,255,255,.04);border:2px solid var(--border);color:var(--text);
-  border-radius:12px;padding:.7rem 1rem;margin-bottom:.5rem;font-size:.9rem;cursor:pointer;
-  font-family:'Noto Sans Thai',sans-serif;transition:all .2s}
-.opt-btn:hover:not(:disabled){border-color:var(--cyan);background:rgba(0,229,255,.06)}
-.opt-btn.voted{border-color:var(--violet);background:rgba(124,58,237,.1)}
-.opt-btn:disabled{cursor:default}
-.prog-bar{height:5px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:.25rem;overflow:hidden}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:3px;transition:width .6s ease}
-
-/* Star rating poll */
-.star-poll{display:flex;gap:.5rem;justify-content:center;margin:1rem 0}
-.star-poll .sp{font-size:2.8rem;cursor:pointer;color:rgba(255,255,255,.15);
-  transition:color .15s,transform .15s;line-height:1;user-select:none}
-.star-poll .sp.lit{color:var(--amber)}
-.star-poll .sp:hover{transform:scale(1.15)}
-.rating-avg{text-align:center;font-size:2rem;font-weight:800;color:var(--amber)}
-.rating-dist{margin-top:.75rem}
-.rdist-row{display:flex;gap:.6rem;align-items:center;margin-bottom:.35rem}
-.rdist-label{width:24px;font-size:.78rem;color:var(--muted);text-align:right;flex-shrink:0}
-.rdist-bar{flex:1;background:rgba(255,255,255,.07);border-radius:3px;height:7px;overflow:hidden}
+/* Poll */
+.poll-blk{margin-bottom:.9rem}
+.poll-blk:last-child{margin-bottom:0}
+.poll-q{font-weight:600;font-size:.9rem;line-height:1.4;margin-bottom:.65rem}
+.opt-btn{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--input-bg);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:.55rem .85rem;margin-bottom:.38rem;font-size:.84rem;cursor:pointer;font-family:'Noto Sans Thai',sans-serif;transition:all .18s}
+.opt-btn:hover:not(:disabled){border-color:var(--cyan);background:var(--pill-active-bg)}
+.opt-btn.voted{border-color:var(--violet)}.opt-btn:disabled{cursor:default}
+.prog-bar{height:4px;background:var(--prog-track);border-radius:3px;margin:.15rem 0 .25rem;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:3px;transition:width .6s}
+.star-poll{display:flex;gap:.4rem;justify-content:center;margin:.5rem 0}
+.star-poll .sp{font-size:2rem;cursor:pointer;color:var(--star-off);transition:color .15s,transform .15s;user-select:none;line-height:1}
+.star-poll .sp.lit{color:var(--amber)}.star-poll .sp:hover{transform:scale(1.12)}
+.r-avg{text-align:center;font-size:1.4rem;font-weight:800;color:var(--amber);margin-bottom:.4rem}
+.rdist-row{display:flex;gap:.45rem;align-items:center;margin-bottom:.28rem}
+.rdist-lbl{width:20px;font-size:.72rem;color:var(--muted);text-align:right;flex-shrink:0}
+.rdist-bar{flex:1;background:var(--prog-track);border-radius:3px;height:6px;overflow:hidden}
 .rdist-fill{height:100%;background:linear-gradient(90deg,var(--amber),#fbbf24);border-radius:3px;transition:width .6s}
-.rdist-n{width:24px;font-size:.75rem;color:var(--muted)}
+.rdist-n{width:20px;font-size:.7rem;color:var(--muted)}
+.text-ans-row{display:flex;gap:.38rem}.text-ans-row input{flex:1}
 
-/* Text answer */
-.text-ans-wrap{display:flex;gap:.5rem}
-.text-ans-wrap input{flex:1}
+/* Comment form */
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem}
+.form-group{margin-bottom:.6rem}
+#my-comments{display:flex;flex-direction:column;gap:.4rem;margin-top:.65rem;max-height:180px;overflow-y:auto}
+.mc-item{background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:.6rem;animation:fadeUp .35s ease}
+.lock-overlay{text-align:center;padding:1.2rem 0;background:var(--lock-bg);border-radius:10px;border:1px dashed var(--border)}
 
-/* Result reveal animation */
-.result-reveal{animation:reveal .5s ease}
-@keyframes reveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.hidden{display:none!important}
 
-/* ── Comment form ── */
-.form-group{margin-bottom:1.1rem}
-.form-label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
-.pill-group{display:flex;flex-wrap:wrap;gap:.5rem}
-.pill{padding:.42rem .9rem;border-radius:999px;border:2px solid var(--border);
-  background:transparent;color:var(--sub);font-size:.83rem;cursor:pointer;
-  font-family:'Noto Sans Thai',sans-serif;transition:all .2s}
-.pill:hover{border-color:var(--cyan);color:var(--text)}
-.pill.active{border-color:var(--cyan);background:rgba(0,229,255,.1);color:var(--cyan)}
-.star-row{display:flex;gap:.35rem}
-.star-row .star{font-size:2rem;cursor:pointer;color:rgba(255,255,255,.18);
-  transition:color .15s,transform .15s;line-height:1;user-select:none}
-.star-row .star.lit{color:var(--amber)}
-.star-row .star:hover{transform:scale(1.15)}
-.char-hint{position:absolute;bottom:.5rem;right:.9rem;font-size:.7rem;color:var(--muted)}
-.input-wrap{position:relative}
-.author-emoji{position:absolute;right:.9rem;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none}
-
-/* ── My comments history ── */
-.my-comment-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:.85rem;animation:popIn .35s ease}
-.sent-chip{display:inline-block;padding:.18rem .55rem;border-radius:999px;font-size:.7rem;font-weight:600}
-.sent-pos{background:rgba(16,185,129,.15);color:#34d399}
-.sent-neu{background:rgba(59,130,246,.15);color:#93c5fd}
-.sent-neg{background:rgba(239,68,68,.15);color:#fca5a5}
-
-/* ── Status bar ── */
-.status-bar{position:fixed;bottom:0;left:0;right:0;backdrop-filter:blur(20px);
-  background:rgba(7,9,15,.8);border-top:1px solid var(--border);
-  padding:.6rem 1.25rem;display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);z-index:50}
-
-/* ── Shake / fadeIn ── */
-@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-/* ── Responsive ── */
-@media(max-width:600px){
-  header{padding:.7rem 1rem}
-  .wrap{padding:1rem .75rem 5.5rem}
-  .card{padding:1.1rem}
-  .star-poll .sp{font-size:2.2rem}
-}
+@media(max-width:780px){.grid{grid-template-columns:1fr}.page{padding:.9rem .75rem 3.2rem}.form-row2{grid-template-columns:1fr}}
+@media(max-width:480px){.star-poll .sp{font-size:1.7rem}}
 </style>
 </head>
 <body>
 
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
-<div class="orb orb3"></div>
 
+<!-- ════════ HEADER ════════ -->
 <header>
-  <span class="logo">NEXUS</span>
-  <div class="conn-pill"><span class="conn-dot"></span><span id="conn-txt">กำลังเชื่อมต่อ...</span></div>
+  <a class="logo-area" href="#">
+    <svg class="logo-svg" viewBox="0 0 36 36" fill="none">
+      <defs><linearGradient id="lgi" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--cyan)"/><stop offset="100%" stop-color="var(--violet)"/></linearGradient></defs>
+      <polygon points="18,2 32,10 32,26 18,34 4,26 4,10" stroke="url(#lgi)" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+      <circle cx="18" cy="18" r="3.2" fill="url(#lgi)"/>
+      <circle cx="10" cy="12" r="2" fill="url(#lgi)" opacity=".85"/><circle cx="26" cy="12" r="2" fill="url(#lgi)" opacity=".85"/>
+      <circle cx="26" cy="24" r="2" fill="url(#lgi)" opacity=".65"/><circle cx="10" cy="24" r="2" fill="url(#lgi)" opacity=".65"/>
+      <line x1="18" y1="18" x2="10" y2="12" stroke="url(#lgi)" stroke-width="1.1" opacity=".7"/>
+      <line x1="18" y1="18" x2="26" y2="12" stroke="url(#lgi)" stroke-width="1.1" opacity=".7"/>
+      <line x1="18" y1="18" x2="26" y2="24" stroke="url(#lgi)" stroke-width="1.1" opacity=".5"/>
+      <line x1="18" y1="18" x2="10" y2="24" stroke="url(#lgi)" stroke-width="1.1" opacity=".5"/>
+      <line x1="10" y1="12" x2="26" y2="12" stroke="url(#lgi)" stroke-width=".8" opacity=".3"/>
+      <line x1="10" y1="24" x2="26" y2="24" stroke="url(#lgi)" stroke-width=".8" opacity=".3"/>
+    </svg>
+    <div class="logo-text-wrap">
+      <span class="logo-name">NEXUS</span>
+      <span class="logo-slogan" data-i18n="slogan">Event Intelligence Platform</span>
+    </div>
+  </a>
+  <div class="hdr-right">
+    <button class="icon-btn" id="nx-lang-btn" onclick="NX.toggleLang()">EN</button>
+    <button class="icon-btn" onclick="NX.toggleTheme()"><span id="nx-theme-icon">🌙</span></button>
+    <div class="conn-pill">
+      <span class="conn-dot" id="conn-dot"></span>
+      <span id="conn-txt" data-i18n="connecting">กำลังเชื่อมต่อ</span>
+      <span>·</span>
+      <span data-i18n="attendees_unit">คน</span>
+      <strong id="attendee-count" style="color:var(--cyan);margin-left:.15rem">0</strong>
+    </div>
+  </div>
 </header>
 
-<div class="wrap">
+<!-- ════════ MAIN ════════ -->
+<div class="page">
+<div class="grid">
 
-  <!-- Check-in -->
-  <div class="card" id="sec-checkin">
-    <div class="card-title">Check In</div>
-    <div class="input-wrap" style="margin-bottom:.85rem">
-      <input type="text" id="name-input" placeholder="ชื่อ หรือ นามแฝงของคุณ..." maxlength="40"/>
+  <!-- LEFT: Check-in + Poll -->
+  <div class="col">
+    <div class="card" id="sec-checkin">
+      <div class="card-title" data-i18n="sec_checkin">CHECK IN</div>
+      <div class="input-wrap" style="margin-bottom:.7rem">
+        <input type="text" id="name-input" data-i18n-ph="name_ph" placeholder="ชื่อหรือนามแฝงของคุณ..." maxlength="40"/>
+      </div>
+      <button class="btn btn-cyan btn-full" onclick="checkIn()">
+        <span>✓</span> <span data-i18n="btn_checkin">เช็คอินเพื่อเข้าร่วม</span>
+      </button>
+      <div id="checkin-confirm" style="margin-top:.55rem"></div>
     </div>
-    <button class="btn btn-cyan btn-full" onclick="checkIn()">เช็คอินเพื่อเข้าร่วม</button>
-    <div id="checkin-confirm" style="margin-top:.85rem"></div>
+
+    <div class="card hidden" id="sec-poll">
+      <div class="card-title" data-i18n="sec_poll">POLL</div>
+      <div id="poll-container">
+        <p style="color:var(--muted);font-size:.84rem" data-i18n="poll_wait">รอ Admin เปิด Poll...</p>
+      </div>
+    </div>
   </div>
 
-  <!-- Poll -->
-  <div class="card" id="sec-poll" style="display:none">
-    <div class="card-title">Poll</div>
-    <div id="poll-container"><p style="color:var(--muted);font-size:.88rem">รอ Admin เปิด Poll...</p></div>
+  <!-- RIGHT: Comment -->
+  <div class="col">
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.75rem">
+        <div class="card-title" style="margin-bottom:0" data-i18n="sec_comment">แชร์ความรู้สึกของคุณ</div>
+        <span style="font-size:.68rem;color:var(--muted)" data-i18n="comment_sub">ใช้เวลาไม่ถึง 1 นาที ✨</span>
+      </div>
+
+      <!-- Lock -->
+      <div class="lock-overlay" id="comment-lock">
+        <div style="font-size:1.6rem;margin-bottom:.4rem">🔒</div>
+        <p style="font-size:.82rem;color:var(--muted)" data-i18n="comment_lock">เช็คอินก่อนเพื่อแสดงความคิดเห็น</p>
+      </div>
+
+      <!-- Form -->
+      <div id="comment-form" class="hidden">
+        <div class="form-row2">
+          <div>
+            <label class="form-label">
+              <span data-i18n="lbl_name">ชื่อ / นามแฝง</span> <span style="color:var(--red)">*</span>
+            </label>
+            <div class="input-wrap">
+              <input type="text" id="c-author" data-i18n-ph="name_ph" placeholder="ชื่อของคุณ..." maxlength="40"/>
+              <span id="author-emoji" class="input-emoji">✏️</span>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">
+              <span data-i18n="lbl_gender">เพศ</span>
+              <span class="opt-note" data-i18n="lbl_optional">(ไม่บังคับ)</span>
+            </label>
+            <div class="pill-group" id="gender-group">
+              <button class="pill" data-val="male"        onclick="pickPill('gender-group',this)" id="pill-male"   data-i18n="pill_male">👨 ชาย</button>
+              <button class="pill" data-val="female"      onclick="pickPill('gender-group',this)" id="pill-female" data-i18n="pill_female">👩 หญิง</button>
+              <button class="pill" data-val="nonbinary"   onclick="pickPill('gender-group',this)" id="pill-nb"     data-i18n="pill_nb">🌈 อื่น</button>
+              <button class="pill" data-val="unspecified" onclick="pickPill('gender-group',this)" id="pill-ns"     data-i18n="pill_ns">🤫 ไม่ตอบ</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span data-i18n="lbl_rating">ความพึงพอใจ</span>
+            <span class="opt-note" data-i18n="lbl_optional">(ไม่บังคับ)</span>
+          </label>
+          <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+            <div class="star-row" id="star-row">
+              <span class="star" data-v="1" onclick="setRating(1)">★</span>
+              <span class="star" data-v="2" onclick="setRating(2)">★</span>
+              <span class="star" data-v="3" onclick="setRating(3)">★</span>
+              <span class="star" data-v="4" onclick="setRating(4)">★</span>
+              <span class="star" data-v="5" onclick="setRating(5)">★</span>
+            </div>
+            <span id="rating-label" style="font-size:.76rem;color:var(--muted)"></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span data-i18n="lbl_comment">ความคิดเห็น</span> <span style="color:var(--red)">*</span>
+          </label>
+          <div class="input-wrap">
+            <textarea id="c-text" data-i18n-ph="comment_ph" placeholder="บอกเราได้เลย..." maxlength="500" oninput="updateChar()"></textarea>
+            <span class="char-hint" id="char-count">0/500</span>
+          </div>
+        </div>
+
+        <button class="btn btn-violet btn-full" id="submit-btn" onclick="submitComment()">
+          <span data-i18n="btn_submit">ส่งความคิดเห็น</span>
+        </button>
+        <p id="c-msg" style="margin-top:.48rem;font-size:.78rem;text-align:center;min-height:1rem"></p>
+        <div id="my-comments"></div>
+      </div>
+    </div>
   </div>
 
-  <!-- Comment -->
-  <div class="card" id="sec-comment" style="display:none">
-    <div class="card-title">แชร์ความรู้สึกของคุณ</div>
-    <p style="font-size:.8rem;color:var(--muted);margin-bottom:1.1rem">ใช้เวลาไม่ถึง 1 นาที — ทุกคำตอบมีความหมาย ✨</p>
-
-    <div class="form-group">
-      <label class="form-label">ชื่อ / นามแฝง <span style="color:#ef4444">*</span></label>
-      <div class="input-wrap">
-        <input type="text" id="c-author" placeholder="เช่น นักเรียนแถวหลัง, อาจารย์กุล..." maxlength="40"/>
-        <span id="author-emoji" class="author-emoji">✏️</span>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">คุณเรียกตัวเองว่า? <span style="color:var(--muted);font-size:.72rem">(ไม่บังคับ)</span></label>
-      <div class="pill-group" id="gender-group">
-        <button class="pill" data-val="male"        onclick="pickPill('gender-group',this)">👨 ผู้ชาย</button>
-        <button class="pill" data-val="female"      onclick="pickPill('gender-group',this)">👩 ผู้หญิง</button>
-        <button class="pill" data-val="nonbinary"   onclick="pickPill('gender-group',this)">🌈 ไม่ระบุ / อื่น ๆ</button>
-        <button class="pill" data-val="unspecified" onclick="pickPill('gender-group',this)">🤫 ไม่ตอบ</button>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">ระดับความพึงพอใจ <span style="color:var(--muted);font-size:.72rem">(ไม่บังคับ)</span></label>
-      <div class="star-row" id="star-row">
-        <span class="star" data-v="1" onclick="setRating(1)">★</span>
-        <span class="star" data-v="2" onclick="setRating(2)">★</span>
-        <span class="star" data-v="3" onclick="setRating(3)">★</span>
-        <span class="star" data-v="4" onclick="setRating(4)">★</span>
-        <span class="star" data-v="5" onclick="setRating(5)">★</span>
-      </div>
-      <p id="rating-label" style="font-size:.78rem;color:var(--muted);margin-top:.3rem;min-height:1rem"></p>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">ความคิดเห็น / ข้อเสนอแนะ <span style="color:#ef4444">*</span></label>
-      <div class="input-wrap">
-        <textarea id="c-text" placeholder="บอกเราได้เลย... ไม่มีถูกหรือผิด" maxlength="500" oninput="updateChar()"></textarea>
-        <span class="char-hint" id="char-count">0/500</span>
-      </div>
-    </div>
-
-    <button class="btn btn-violet btn-full" id="submit-btn" onclick="submitComment()">ส่งความคิดเห็น</button>
-    <p id="c-msg" style="margin-top:.75rem;font-size:.85rem;text-align:center;min-height:1.2rem"></p>
-    <div id="my-comments" style="margin-top:1rem;display:flex;flex-direction:column;gap:.6rem"></div>
-  </div>
-
+</div>
 </div>
 
 <div class="status-bar">
-  <span id="conn-status">กำลังเชื่อมต่อ...</span>
-  <span>ผู้เข้าร่วม: <strong id="attendee-count" style="color:var(--cyan)">0</strong></span>
+  <span id="status-txt" data-i18n="connecting">กำลังเชื่อมต่อ...</span>
+  <span style="display:flex;align-items:center;gap:.3rem">
+    <span data-i18n="attendees">ผู้เข้าร่วม</span>
+    <strong id="attendee-count2" style="color:var(--cyan)">0</strong>
+  </span>
 </div>
 
+<script src="/js/nexus-ui.js"></script>
 <script>
-// ── Identity ───────────────────────────────────────────────────
+// ── State ──
 let sessionId = localStorage.getItem('nx_sid');
-if (!sessionId) {
-  sessionId = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
-  localStorage.setItem('nx_sid', sessionId);
-}
-let checkedIn  = localStorage.getItem('nx_in') === '1';
-let voted      = new Set(JSON.parse(localStorage.getItem('nx_voted') || '[]'));
-let selGender  = null;
-let selRating  = 0;
-let pollResults = {}; // pollId -> showResults bool
+if (!sessionId) { sessionId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)); localStorage.setItem('nx_sid',sessionId); }
+let checkedIn   = localStorage.getItem('nx_in')==='1';
+let voted       = new Set(JSON.parse(localStorage.getItem('nx_voted')||'[]'));
+let selGender   = null, selRating = 0, pollResults = {}, isConnected = false;
 
-// ── Socket ─────────────────────────────────────────────────────
+// ── onLangChange callback (re-render dynamic content) ──
+window.onLangChange = function() {
+  if (selRating > 0) document.getElementById('rating-label').textContent = NX.t('r'+selRating);
+  fetchPolls();
+};
+
+// ── Socket ──
 const socket = io();
-socket.on('connect', () => {
-  document.getElementById('conn-txt').textContent    = 'เชื่อมต่อแล้ว';
-  document.getElementById('conn-status').textContent = 'เชื่อมต่อแล้ว';
-  document.querySelector('.conn-dot').style.background = '#10b981';
-  if (checkedIn) showDashboard();
-  fetchPolls();
-});
-socket.on('disconnect', () => {
-  document.querySelector('.conn-dot').style.background = '#ef4444';
-  document.getElementById('conn-txt').textContent = 'ขาดการเชื่อมต่อ...';
-});
-socket.on('checkin_update', d => { document.getElementById('attendee-count').textContent = d.total; });
-socket.on('poll_update',    () => fetchPolls());
-socket.on('poll_visibility', d => {
-  pollResults[d.pollId] = d.showResults;
-  fetchPolls();
-});
+socket.on('connect',     ()=>{ isConnected=true;  setConn(true);  if(checkedIn) showPost(); fetchPolls(); });
+socket.on('disconnect',  ()=>{ isConnected=false; setConn(false); });
+socket.on('checkin_update', d=>setCount(d.total));
+socket.on('poll_update',    ()=>fetchPolls());
+socket.on('poll_visibility',d=>{ pollResults[d.pollId]=d.showResults; fetchPolls(); });
 
-// ── Check-in ───────────────────────────────────────────────────
+function setConn(ok) {
+  document.getElementById('conn-dot').style.background = ok?'var(--green)':'var(--red)';
+  const txt = ok?NX.t('connected'):NX.t('connecting');
+  document.getElementById('conn-txt').textContent  = txt;
+  document.getElementById('status-txt').textContent = txt;
+}
+function setCount(n) {
+  document.getElementById('attendee-count').textContent  = n;
+  document.getElementById('attendee-count2').textContent = n;
+}
+
+// ── Check-in ──
 async function checkIn() {
   const name = document.getElementById('name-input').value.trim();
   if (!name) { shake('name-input'); return; }
-  const r = await fetch('/api/checkin', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ name, sessionId }) }).then(r=>r.json());
-  if (r.status === 'ok' || r.status === 'already_checked_in') {
-    localStorage.setItem('nx_in','1');
-    checkedIn = true;
-    document.getElementById('checkin-confirm').innerHTML =
-      `<span class="badge-confirm">✓ เช็คอินสำเร็จ — ยินดีต้อนรับ ${name}!</span>`;
-    setTimeout(showDashboard, 900);
+  const r = await fetch('/api/checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,sessionId})}).then(r=>r.json());
+  if (r.status==='ok'||r.status==='already_checked_in') {
+    localStorage.setItem('nx_in','1'); checkedIn=true;
+    document.getElementById('checkin-confirm').innerHTML=`<span class="badge-ok">${NX.tf('checkin_ok',name)}</span>`;
+    setTimeout(()=>{ showPost(); const el=document.getElementById('c-author'); if(!el.value) el.value=name; },700);
   }
 }
-function showDashboard() {
-  document.getElementById('sec-checkin').style.display = 'none';
-  document.getElementById('sec-poll').style.display    = 'block';
-  document.getElementById('sec-comment').style.display = 'block';
+function showPost() {
+  document.getElementById('sec-poll').classList.remove('hidden');
+  document.getElementById('comment-lock').classList.add('hidden');
+  document.getElementById('comment-form').classList.remove('hidden');
 }
 
-// ── Polls ──────────────────────────────────────────────────────
+// ── Polls ──
 async function fetchPolls() {
-  const polls = await fetch('/api/poll').then(r=>r.json());
-  const active = polls.filter(p => p.active);
+  const polls = await fetch('/api/poll').then(r=>r.json()).catch(()=>[]);
+  const active = polls.filter(p=>p.active);
   const el = document.getElementById('poll-container');
-  if (!active.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.88rem">รอ Admin เปิด Poll...</p>'; return; }
+  if (!active.length) { el.innerHTML=`<p style="color:var(--muted);font-size:.84rem">${NX.t('poll_wait')}</p>`; return; }
   el.innerHTML = active.map(renderPoll).join('');
 }
 
 function renderPoll(p) {
-  const done       = voted.has(p.id);
-  const showRes    = pollResults[p.id] ?? p.showResults ?? false;
-
-  if (p.type === 'choice') {
-    const total = p.options?.reduce((s,o) => s + o.votes, 0) || 0;
-    return `<div class="poll-block">
-      <p class="poll-q">${p.question} <span class="poll-type-tag tag-choice">ตัวเลือก</span></p>
-      ${(p.options||[]).map((o,i) => {
-        const pct = total ? Math.round(o.votes/total*100) : 0;
+  const done=voted.has(p.id), showRes=pollResults[p.id]??p.showResults??false;
+  if (p.type==='choice') {
+    const tot=p.options?.reduce((s,o)=>s+o.votes,0)||0;
+    return `<div class="poll-blk">
+      <p class="poll-q">${p.question}<span class="nx-tag nx-tag-c">${NX.t('tag_choice')}</span></p>
+      ${(p.options||[]).map((o,i)=>{ const pct=tot?Math.round(o.votes/tot*100):0;
         return `<button class="opt-btn${done?' voted':''}" onclick="castVote('${p.id}',${i})" ${done?'disabled':''}>
-          <span>${o.text}</span><span style="color:var(--muted);font-size:.82rem">${done?pct+'%':''}</span>
-        </button>${done && showRes ? `<div class="prog-bar result-reveal"><div class="prog-fill" style="width:${pct}%"></div></div>` : ''}`;
-      }).join('')}
-      <p style="font-size:.75rem;color:var(--muted);margin-top:.4rem">${p.voterCount} คนโหวต</p>
+          <span>${o.text}</span><span style="color:var(--muted);font-size:.78rem">${done?pct+'%':''}</span>
+        </button>${done&&showRes?`<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`:''}`}).join('')}
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${p.voterCount} ${NX.t('voters')}</p>
     </div>`;
   }
-
-  if (p.type === 'text') {
-    return `<div class="poll-block">
-      <p class="poll-q">${p.question} <span class="poll-type-tag tag-text">Word Cloud</span></p>
-      ${done
-        ? `<p style="color:var(--cyan);font-size:.88rem">✓ ส่งคำตอบแล้ว — ขอบคุณ!</p>`
-        : `<div class="text-ans-wrap">
-             <input type="text" id="ta-${p.id}" placeholder="พิมพ์คำตอบของคุณ..." />
-             <button class="btn btn-cyan" onclick="submitAnswer('${p.id}')">ส่ง</button>
-           </div>`}
-      <p style="font-size:.75rem;color:var(--muted);margin-top:.4rem">${p.voterCount} คนตอบแล้ว</p>
+  if (p.type==='text') {
+    return `<div class="poll-blk">
+      <p class="poll-q">${p.question}<span class="nx-tag nx-tag-t">Word Cloud</span></p>
+      ${done?`<p style="color:var(--green);font-size:.84rem">${NX.t('answered_done')}</p>`:
+        `<div class="text-ans-row"><input type="text" id="ta-${p.id}" placeholder="${NX.t('text_ph')}" style="font-size:.84rem"/>
+         <button class="btn btn-cyan btn-sm" onclick="submitAnswer('${p.id}')">${NX.t('submit_text')}</button></div>`}
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${p.voterCount} ${NX.t('responders')}</p>
     </div>`;
   }
-
-  if (p.type === 'rating') {
-    const counts = p.ratingCounts || {1:0,2:0,3:0,4:0,5:0};
-    const total  = Object.values(counts).reduce((s,v)=>s+v,0);
-    const avg    = total ? (Object.entries(counts).reduce((s,[k,v])=>s+Number(k)*v,0)/total).toFixed(1) : null;
-    if (done && showRes) {
-      const maxC = Math.max(...Object.values(counts),1);
-      return `<div class="poll-block result-reveal">
-        <p class="poll-q">${p.question} <span class="poll-type-tag tag-rating">Rating</span></p>
-        ${avg ? `<div class="rating-avg">${avg} <span style="color:var(--amber)">★</span></div>` : ''}
-        <div class="rating-dist">${[5,4,3,2,1].map(v=>`
-          <div class="rdist-row">
-            <span class="rdist-label">${v}★</span>
-            <div class="rdist-bar"><div class="rdist-fill" style="width:${Math.round((counts[v]||0)/maxC*100)}%"></div></div>
-            <span class="rdist-n">${counts[v]||0}</span>
-          </div>`).join('')}
-        </div>
-        <p style="font-size:.75rem;color:var(--muted);margin-top:.4rem">${total} คนให้คะแนน</p>
+  if (p.type==='rating') {
+    const c=p.ratingCounts||{1:0,2:0,3:0,4:0,5:0};
+    const tot=Object.values(c).reduce((s,v)=>s+v,0);
+    const avg=tot?(Object.entries(c).reduce((s,[k,v])=>s+Number(k)*v,0)/tot).toFixed(1):null;
+    if (done&&showRes) {
+      const maxC=Math.max(...Object.values(c),1);
+      return `<div class="poll-blk">
+        <p class="poll-q">${p.question}<span class="nx-tag nx-tag-r">Rating</span></p>
+        ${avg?`<div class="r-avg">${avg} ★</div>`:''}
+        ${[5,4,3,2,1].map(v=>`<div class="rdist-row"><span class="rdist-lbl">${v}★</span>
+          <div class="rdist-bar"><div class="rdist-fill" style="width:${Math.round((c[v]||0)/maxC*100)}%"></div></div>
+          <span class="rdist-n">${c[v]||0}</span></div>`).join('')}
+        <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${tot} ${NX.t('raters')}</p>
       </div>`;
     }
-    return `<div class="poll-block">
-      <p class="poll-q">${p.question} <span class="poll-type-tag tag-rating">Rating</span></p>
-      ${done
-        ? `<p style="color:var(--amber);font-size:.88rem">✓ ให้คะแนนแล้ว — ขอบคุณ!</p>`
-        : `<div class="star-poll" id="sp-${p.id}">
-             ${[1,2,3,4,5].map(v=>`<span class="sp" data-v="${v}" onclick="submitRating('${p.id}',${v})"
-               onmouseenter="hoverStar('sp-${p.id}',${v})" onmouseleave="resetHover('sp-${p.id}')">★</span>`).join('')}
-           </div>
-           <p id="sp-hint-${p.id}" style="text-align:center;font-size:.8rem;color:var(--muted);min-height:1.2rem"></p>`}
-      <p style="font-size:.75rem;color:var(--muted);margin-top:.4rem">${p.voterCount} คนให้คะแนน</p>
+    return `<div class="poll-blk">
+      <p class="poll-q">${p.question}<span class="nx-tag nx-tag-r">Rating ★</span></p>
+      ${done?`<p style="color:var(--amber);font-size:.84rem">${NX.t('voted_done')}</p>`:
+        `<div class="star-poll" id="sp-${p.id}">
+           ${[1,2,3,4,5].map(v=>`<span class="sp" data-v="${v}" onclick="submitRating('${p.id}',${v})"
+             onmouseenter="hsp('sp-${p.id}',${v},'${p.id}')" onmouseleave="rsp('sp-${p.id}','${p.id}')">★</span>`).join('')}
+         </div>
+         <p id="sp-hint-${p.id}" style="text-align:center;font-size:.76rem;color:var(--muted);min-height:1.1rem"></p>`}
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${p.voterCount} ${NX.t('raters')}</p>
     </div>`;
   }
   return '';
 }
+function hsp(gid,v,pid){document.querySelectorAll(`#${gid} .sp`).forEach(s=>s.classList.toggle('lit',Number(s.dataset.v)<=v));const el=document.getElementById('sp-hint-'+pid);if(el)el.textContent=NX.t('r'+v)||'';}
+function rsp(gid,pid){document.querySelectorAll(`#${gid} .sp`).forEach(s=>s.classList.remove('lit'));const el=document.getElementById('sp-hint-'+pid);if(el)el.textContent='';}
+async function castVote(pid,i){if(voted.has(pid))return;const r=await fetch(`/api/poll/${pid}/vote`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,optionIndex:i})});if(r.ok){voted.add(pid);sv();fetchPolls();}}
+async function submitAnswer(pid){const a=document.getElementById('ta-'+pid)?.value.trim();if(!a)return;const r=await fetch(`/api/poll/${pid}/answer`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,answer:a})});if(r.ok){voted.add(pid);sv();fetchPolls();}}
+async function submitRating(pid,rating){if(voted.has(pid))return;const r=await fetch(`/api/poll/${pid}/rate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,rating})});if(r.ok){voted.add(pid);sv();fetchPolls();}}
+function sv(){localStorage.setItem('nx_voted',JSON.stringify([...voted]));}
 
-function hoverStar(groupId, v) {
-  document.querySelectorAll(`#${groupId} .sp`).forEach(s => {
-    s.classList.toggle('lit', Number(s.dataset.v) <= v);
-  });
-  const labels = {1:'😞 ต้องปรับปรุง',2:'😐 พอใช้ได้',3:'🙂 โอเค',4:'😊 ดีมาก',5:'🤩 ยอดเยี่ยม!'};
-  const id = groupId.replace('sp-','');
-  const el = document.getElementById(`sp-hint-${id}`);
-  if (el) el.textContent = labels[v] || '';
-}
-function resetHover(groupId) {
-  document.querySelectorAll(`#${groupId} .sp`).forEach(s => s.classList.remove('lit'));
-}
-
-async function castVote(pollId, idx) {
-  if (voted.has(pollId)) return;
-  const r = await fetch(`/api/poll/${pollId}/vote`, { method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({sessionId, optionIndex:idx}) });
-  if (r.ok) { voted.add(pollId); saveVoted(); fetchPolls(); }
-}
-async function submitAnswer(pollId) {
-  const answer = document.getElementById('ta-'+pollId)?.value.trim();
-  if (!answer) return;
-  const r = await fetch(`/api/poll/${pollId}/answer`, { method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({sessionId, answer}) });
-  if (r.ok) { voted.add(pollId); saveVoted(); fetchPolls(); }
-}
-async function submitRating(pollId, rating) {
-  if (voted.has(pollId)) return;
-  const r = await fetch(`/api/poll/${pollId}/rate`, { method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({sessionId, rating}) });
-  if (r.ok) { voted.add(pollId); saveVoted(); fetchPolls(); }
-}
-function saveVoted() { localStorage.setItem('nx_voted', JSON.stringify([...voted])); }
-
-// ── Comment form ───────────────────────────────────────────────
-const ratingLabels = {1:'😞 ต้องปรับปรุงมาก',2:'😐 พอใช้ได้',3:'🙂 โอเค',4:'😊 ดีมาก',5:'🤩 ยอดเยี่ยมมาก!'};
-const emojis = ['✏️','💬','🙋','👋','🌟','🎯','💡','🔥','🎓','🧠'];
-
-document.getElementById('c-author')?.addEventListener('input', e => {
-  const v = e.target.value;
-  document.getElementById('author-emoji').textContent = v ? emojis[v.charCodeAt(0) % emojis.length] : '✏️';
-});
-
-function pickPill(groupId, btn) {
-  document.querySelectorAll(`#${groupId} .pill`).forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  if (groupId === 'gender-group') selGender = btn.dataset.val;
-}
-function setRating(v) {
-  selRating = v;
-  document.querySelectorAll('.star-row .star').forEach(s => s.classList.toggle('lit', Number(s.dataset.v) <= v));
-  document.getElementById('rating-label').textContent = ratingLabels[v] || '';
-}
-function updateChar() {
-  const n = document.getElementById('c-text').value.length;
-  const el = document.getElementById('char-count');
-  el.textContent = `${n}/500`;
-  el.style.color = n > 450 ? 'var(--amber)' : 'var(--muted)';
-}
-
-async function submitComment() {
-  const author = document.getElementById('c-author').value.trim();
-  const text   = document.getElementById('c-text').value.trim();
-  if (!author) { shake('c-author'); return; }
-  if (!text)   { shake('c-text');   return; }
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
-  const r = await fetch('/api/comment', { method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ text, author, sessionId, gender: selGender||'unspecified', rating: selRating||null }) });
-  btn.disabled = false; btn.textContent = 'ส่งความคิดเห็น';
-  if (r.ok) {
-    const c = await r.json();
-    document.getElementById('c-text').value = ''; updateChar();
-    const icons = {positive:'💚',neutral:'💙',negative:'❤️'};
-    document.getElementById('c-msg').innerHTML = `<span style="color:var(--cyan)">${icons[c.sentiment]||'💬'} ส่งเรียบร้อย — ขอบคุณ ${author}!</span>`;
-    setTimeout(() => document.getElementById('c-msg').textContent = '', 3500);
-    const stars = c.rating ? '★'.repeat(c.rating)+'☆'.repeat(5-c.rating) : '';
+// ── Comment form ──
+const EMOJIS=['✏️','💬','🙋','👋','🌟','🎯','💡','🔥','🎓','🧠'];
+document.getElementById('c-author').addEventListener('input',e=>{const v=e.target.value;document.getElementById('author-emoji').textContent=v?EMOJIS[v.charCodeAt(0)%EMOJIS.length]:'✏️';});
+function pickPill(gid,btn){document.querySelectorAll(`#${gid} .pill`).forEach(p=>p.classList.remove('active'));btn.classList.add('active');if(gid==='gender-group')selGender=btn.dataset.val;}
+function setRating(v){selRating=v;document.querySelectorAll('.star-row .star').forEach(s=>s.classList.toggle('lit',Number(s.dataset.v)<=v));document.getElementById('rating-label').textContent=NX.t('r'+v)||'';}
+function updateChar(){const n=document.getElementById('c-text').value.length;const el=document.getElementById('char-count');el.textContent=`${n}/500`;el.style.color=n>450?'var(--amber)':'var(--muted)';}
+async function submitComment(){
+  const author=document.getElementById('c-author').value.trim();
+  const text  =document.getElementById('c-text').value.trim();
+  if(!author){shake('c-author');return;}if(!text){shake('c-text');return;}
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.querySelector('[data-i18n]').textContent=NX.t('submitting');
+  const r=await fetch('/api/comment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,author,sessionId,gender:selGender||'unspecified',rating:selRating||null})});
+  btn.disabled=false;btn.querySelector('[data-i18n]').textContent=NX.t('btn_submit');
+  if(r.ok){
+    const c=await r.json();document.getElementById('c-text').value='';updateChar();
+    document.getElementById('c-msg').textContent=NX.tf('sent_ok',author);
+    setTimeout(()=>document.getElementById('c-msg').textContent='',3200);
+    const stars=c.rating?'★'.repeat(c.rating):'';
+    const cls=c.sentiment==='positive'?'nx-sent-pos':c.sentiment==='negative'?'nx-sent-neg':'nx-sent-neu';
     document.getElementById('my-comments').insertAdjacentHTML('afterbegin',
-      `<div class="my-comment-item">
-         <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
-           <span style="font-weight:600;font-size:.88rem">${author}</span>
-           <span style="color:var(--amber);font-size:.8rem">${stars}</span>
-         </div>
-         <p style="font-size:.88rem;color:var(--sub)">${text}</p>
-         <div style="margin-top:.4rem"><span class="sent-chip sent-${c.sentiment==='positive'?'pos':c.sentiment==='negative'?'neg':'neu'}">${c.sentiment}</span></div>
-       </div>`);
+      `<div class="mc-item"><div style="display:flex;justify-content:space-between;margin-bottom:.28rem">
+         <span style="font-weight:600;font-size:.8rem">${author}</span>
+         <span style="color:var(--amber);font-size:.73rem">${stars}</span></div>
+       <p style="font-size:.82rem;color:var(--sub)">${text}</p>
+       <div style="margin-top:.28rem"><span class="nx-chip ${cls}">${c.sentiment}</span></div></div>`);
   }
 }
-
-function shake(id) {
-  const el = document.getElementById(id);
-  el.style.borderColor = '#ef4444';
-  el.style.animation   = 'shake .3s ease';
-  setTimeout(() => { el.style.animation = ''; el.style.borderColor = ''; }, 600);
-}
+function shake(id){const el=document.getElementById(id);el.style.borderColor='var(--red)';el.style.animation='shake .3s ease';setTimeout(()=>{el.style.animation='';el.style.borderColor='';},600);}
+if(checkedIn)showPost();
 </script>
 </body>
 </html>

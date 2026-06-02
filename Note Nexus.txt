@@ -1,6 +1,6 @@
-หน้าURLParticipant (check-in/vote/comment) http://localhost:3000/index.htmlLive 
-Dashboard (projector) http://localhost:3000/dashboard.html
-Admin Panel http://localhost:3000/admin.html
+URL Participant (check-in/vote/comment) https://nexus-delta-amber.vercel.app/index.html 
+Live Dashboard (projector)  https://nexus-delta-amber.vercel.app/dashboard.html
+Admin Panel: https://nexus-delta-amber.vercel.app/admin.html
 
 
 http://localhost:3000/admin.html
@@ -9,7 +9,8 @@ http://localhost:3000/admin.html
 google Sheets (kulwarun@gmail.com)
 https://docs.google.com/spreadsheets/d/1tAqzHa4xAuGKHL6eXpOcjWx40oFoMssdRgS9S2GSeBU/edit?usp=sharing
 
-
+Youtube (Kulwarun@gmail.com) NEXUS  Unified Event Intelligence Platform
+https://youtu.be/oi211uUoZDQ
 
 ------- สร้าง poll ------
 

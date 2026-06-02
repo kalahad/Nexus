@@ -1,0 +1,285 @@
+/* ══════════════════════════════════════════════════════════
+   nexus-theme.css  —  Shared design system
+   Import in every page:  <link rel="stylesheet" href="/css/nexus-theme.css"/>
+══════════════════════════════════════════════════════════ */
+
+/* ── Tokens ── */
+:root {
+  --cyan:   #00b4d8;
+  --violet: #7c3aed;
+  --amber:  #f59e0b;
+  --green:  #10b981;
+  --red:    #ef4444;
+  --blue:   #3b82f6;
+  --pink:   #ec4899;
+  --radius: 14px;
+  --trans:  background .25s, color .25s, border-color .2s;
+}
+
+/* ── Light (default) ── */
+[data-theme="light"] {
+  --bg:         #eef2f7;
+  --card:       #ffffff;
+  --surface:    #ffffff;
+  --border:     rgba(0,0,0,.08);
+  --focus:      var(--cyan);
+  --text:       #0f172a;
+  --sub:        #475569;
+  --muted:      #94a3b8;
+  --input-bg:   #f8fafc;
+  --header-bg:  rgba(255,255,255,.92);
+  --orb1:       rgba(0,180,216,.1);
+  --orb2:       rgba(124,58,237,.08);
+  --pill-bg:    #f1f5f9;
+  --pill-active-bg:     rgba(0,180,216,.1);
+  --pill-active-border: var(--cyan);
+  --pill-active-text:   #0369a1;
+  --btn-cyan-bg:    linear-gradient(135deg,#00b4d8,#0ea5e9);
+  --btn-cyan-text:  #fff;
+  --btn-violet-bg:  linear-gradient(135deg,#7c3aed,#6366f1);
+  --btn-violet-text:#fff;
+  --btn-green-bg:   linear-gradient(135deg,#10b981,#34d399);
+  --btn-green-text: #fff;
+  --btn-red-bg:     #ef4444;
+  --btn-red-text:   #fff;
+  --btn-ghost-bg:   transparent;
+  --btn-ghost-border:var(--border);
+  --btn-ghost-text: var(--sub);
+  --star-off:   #cbd5e1;
+  --prog-track: #e2e8f0;
+  --shadow:     0 2px 12px rgba(0,0,0,.07);
+  --shadow-card:0 4px 24px rgba(0,0,0,.09);
+  --lock-bg:    #f8fafc;
+  --nav-bg:     rgba(255,255,255,.6);
+  --nav-border: rgba(0,0,0,.06);
+  --glass:      rgba(255,255,255,.8);
+  --overlay-bg: rgba(238,242,247,.96);
+  /* tags */
+  --tag-c-bg:#ede9fe; --tag-c-tx:#5b21b6;
+  --tag-t-bg:#cffafe; --tag-t-tx:#0e7490;
+  --tag-r-bg:#fef9c3; --tag-r-tx:#854d0e;
+  /* chips */
+  --chip-pos-bg:#dcfce7; --chip-pos-tx:#166534;
+  --chip-neu-bg:#dbeafe; --chip-neu-tx:#1e40af;
+  --chip-neg-bg:#fee2e2; --chip-neg-tx:#991b1b;
+  /* stat cards */
+  --stat-border:#e2e8f0;
+}
+
+/* ── Dark ── */
+[data-theme="dark"] {
+  --cyan:   #00e5ff;
+  --bg:     #07090f;
+  --card:   rgba(255,255,255,.04);
+  --surface:rgba(255,255,255,.04);
+  --border: rgba(255,255,255,.08);
+  --focus:  #00e5ff;
+  --text:   #f1f5f9;
+  --sub:    #94a3b8;
+  --muted:  #64748b;
+  --input-bg:   rgba(255,255,255,.06);
+  --header-bg:  rgba(7,9,15,.82);
+  --orb1:   rgba(124,58,237,.18);
+  --orb2:   rgba(0,229,255,.14);
+  --pill-bg:rgba(255,255,255,.06);
+  --pill-active-bg:     rgba(0,229,255,.1);
+  --pill-active-border: #00e5ff;
+  --pill-active-text:   #00e5ff;
+  --btn-cyan-bg:    linear-gradient(135deg,#00e5ff,#0ea5e9);
+  --btn-cyan-text:  #07090f;
+  --btn-violet-bg:  linear-gradient(135deg,#7c3aed,#6366f1);
+  --btn-violet-text:#fff;
+  --btn-green-bg:   linear-gradient(135deg,#10b981,#34d399);
+  --btn-green-text: #07090f;
+  --btn-red-bg:     #ef4444;
+  --btn-red-text:   #fff;
+  --btn-ghost-bg:   transparent;
+  --btn-ghost-border:var(--border);
+  --btn-ghost-text: var(--sub);
+  --star-off:   rgba(255,255,255,.18);
+  --prog-track: rgba(255,255,255,.08);
+  --shadow:     0 2px 16px rgba(0,0,0,.3);
+  --shadow-card:0 4px 28px rgba(0,0,0,.45);
+  --lock-bg:    rgba(255,255,255,.03);
+  --nav-bg:     rgba(255,255,255,.02);
+  --nav-border: rgba(255,255,255,.06);
+  --glass:      rgba(255,255,255,.04);
+  --overlay-bg: rgba(7,9,15,.95);
+  --tag-c-bg:rgba(124,58,237,.2); --tag-c-tx:#a78bfa;
+  --tag-t-bg:rgba(0,229,255,.15); --tag-t-tx:#67e8f9;
+  --tag-r-bg:rgba(245,158,11,.2); --tag-r-tx:#fcd34d;
+  --chip-pos-bg:rgba(16,185,129,.15);  --chip-pos-tx:#34d399;
+  --chip-neu-bg:rgba(59,130,246,.15);  --chip-neu-tx:#93c5fd;
+  --chip-neg-bg:rgba(239,68,68,.15);   --chip-neg-tx:#fca5a5;
+  --stat-border:rgba(255,255,255,.08);
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE RESET
+══════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Noto Sans Thai',sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;
+  transition:var(--trans);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ORBS
+══════════════════════════════════════════════════════════ */
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(90px);z-index:0;animation:drift 14s ease-in-out infinite alternate}
+.orb1{width:520px;height:520px;background:var(--orb1);top:-160px;left:-160px}
+.orb2{width:420px;height:420px;background:var(--orb2);bottom:-100px;right:-100px;animation-delay:-6s}
+@keyframes drift{to{transform:translate(45px,35px) scale(1.08)}}
+
+/* ══════════════════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════════════════ */
+header{
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  background:var(--header-bg);border-bottom:1px solid var(--border);
+  padding:.6rem 1.4rem;
+  display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  transition:var(--trans);
+}
+.logo-area{display:flex;align-items:center;gap:.6rem;flex-shrink:0;text-decoration:none}
+.logo-svg{width:34px;height:34px;flex-shrink:0;transition:transform .3s}
+.logo-area:hover .logo-svg{transform:rotate(8deg) scale(1.05)}
+.logo-text-wrap{display:flex;flex-direction:column;line-height:1.15}
+.logo-name{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:.06em;
+  background:linear-gradient(135deg,var(--cyan),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.logo-slogan{font-size:.58rem;font-weight:500;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.hdr-right{display:flex;align-items:center;gap:.4rem;flex-wrap:nowrap}
+.icon-btn{
+  height:32px;min-width:32px;padding:0 .65rem;border-radius:9px;
+  border:1px solid var(--border);background:var(--pill-bg);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:700;color:var(--sub);
+  transition:all .18s;font-family:'Noto Sans Thai',sans-serif;white-space:nowrap;
+}
+.icon-btn:hover{border-color:var(--cyan);color:var(--cyan);background:var(--pill-active-bg)}
+.conn-pill{display:flex;align-items:center;gap:.3rem;font-size:.7rem;color:var(--muted)}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:cpulse 2s infinite}
+@keyframes cpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.35)}50%{opacity:.7;box-shadow:0 0 0 4px transparent}}
+
+/* ══════════════════════════════════════════════════════════
+   CARD
+══════════════════════════════════════════════════════════ */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.1rem;box-shadow:var(--shadow-card);transition:var(--trans);
+}
+[data-theme="dark"] .card{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.card-title{
+  font-size:.67rem;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:.8rem;
+}
+
+/* ══════════════════════════════════════════════════════════
+   INPUTS
+══════════════════════════════════════════════════════════ */
+input,textarea,select{
+  width:100%;background:var(--input-bg);border:1.5px solid var(--border);
+  border-radius:10px;padding:.58rem .85rem;color:var(--text);
+  font-family:'Noto Sans Thai',sans-serif;font-size:.88rem;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:var(--focus);box-shadow:0 0 0 3px rgba(0,180,216,.1);
+}
+[data-theme="dark"] input:focus,[data-theme="dark"] textarea:focus{box-shadow:0 0 0 3px rgba(0,229,255,.08)}
+textarea{resize:none;min-height:76px;padding-bottom:1.5rem}
+select{cursor:pointer}
+select option{background:var(--bg)}
+.input-wrap{position:relative}
+.input-emoji{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none}
+.char-hint{position:absolute;bottom:.42rem;right:.7rem;font-size:.65rem;color:var(--muted)}
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.35rem;
+  padding:.6rem 1.15rem;border-radius:10px;font-family:'Noto Sans Thai',sans-serif;
+  font-size:.87rem;font-weight:600;cursor:pointer;border:none;transition:all .18s;white-space:nowrap;
+}
+.btn:hover{opacity:.86;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
+.btn-full{width:100%}.btn-sm{padding:.35rem .75rem;font-size:.76rem}
+.btn-cyan  {background:var(--btn-cyan-bg);  color:var(--btn-cyan-text)}
+.btn-violet{background:var(--btn-violet-bg);color:var(--btn-violet-text)}
+.btn-green {background:var(--btn-green-bg); color:var(--btn-green-text)}
+.btn-red   {background:var(--btn-red-bg);   color:var(--btn-red-text)}
+.btn-ghost {background:var(--btn-ghost-bg);border:1px solid var(--btn-ghost-border);color:var(--btn-ghost-text)}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* Confirm badge */
+.badge-ok{
+  display:inline-flex;align-items:center;gap:.4rem;padding:.36rem .85rem;
+  border-radius:999px;font-size:.8rem;font-weight:600;
+  background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);color:var(--green);
+  animation:popIn .4s ease;
+}
+@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ══════════════════════════════════════════════════════════
+   TAGS & CHIPS
+══════════════════════════════════════════════════════════ */
+.nx-tag{display:inline-block;padding:.1rem .42rem;border-radius:5px;font-size:.63rem;font-weight:700;margin-left:.35rem;vertical-align:middle}
+.nx-tag-c{background:var(--tag-c-bg);color:var(--tag-c-tx)}
+.nx-tag-t{background:var(--tag-t-bg);color:var(--tag-t-tx)}
+.nx-tag-r{background:var(--tag-r-bg);color:var(--tag-r-tx)}
+.nx-chip{display:inline-block;padding:.12rem .46rem;border-radius:999px;font-size:.68rem;font-weight:600}
+.nx-sent-pos{background:var(--chip-pos-bg);color:var(--chip-pos-tx)}
+.nx-sent-neu{background:var(--chip-neu-bg);color:var(--chip-neu-tx)}
+.nx-sent-neg{background:var(--chip-neg-bg);color:var(--chip-neg-tx)}
+
+/* ══════════════════════════════════════════════════════════
+   FORM ELEMENTS
+══════════════════════════════════════════════════════════ */
+.form-label{display:block;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.38rem}
+.opt-note{font-size:.63rem;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
+.pill-group{display:flex;flex-wrap:wrap;gap:.3rem}
+.pill{
+  padding:.3rem .65rem;border-radius:999px;border:1.5px solid var(--border);
+  background:var(--pill-bg);color:var(--sub);font-size:.76rem;cursor:pointer;
+  font-family:'Noto Sans Thai',sans-serif;transition:all .18s;
+}
+.pill:hover{border-color:var(--cyan);color:var(--text)}
+.pill.active{border-color:var(--pill-active-border);background:var(--pill-active-bg);color:var(--pill-active-text);font-weight:600}
+.star-row{display:flex;gap:.22rem}
+.star-row .star{font-size:1.55rem;cursor:pointer;color:var(--star-off);transition:color .15s,transform .15s;user-select:none;line-height:1}
+.star-row .star.lit{color:var(--amber)}.star-row .star:hover{transform:scale(1.1)}
+
+/* ══════════════════════════════════════════════════════════
+   STATUS BAR
+══════════════════════════════════════════════════════════ */
+.status-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  backdrop-filter:blur(20px);background:var(--header-bg);
+  border-top:1px solid var(--border);
+  padding:.4rem 1.25rem;display:flex;justify-content:space-between;align-items:center;
+  font-size:.7rem;color:var(--muted);transition:var(--trans);
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════════ */
+.hidden{display:none!important}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE — hide slogan on mobile
+══════════════════════════════════════════════════════════ */
+@media(max-width:600px){
+  .logo-slogan{display:none}
+  header{padding:.5rem .85rem}
+  .icon-btn{height:30px;padding:0 .55rem;font-size:.68rem}
+}
