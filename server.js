@@ -1,37 +1,50 @@
 require('dotenv').config();
 const express = require('express');
-const http    = require('http');
-const { Server } = require('socket.io');
-const cors   = require('cors');
-const path   = require('path');
+const cors    = require('cors');
+const path    = require('path');
 
 const checkinRoutes = require('./routes/checkin');
 const pollRoutes    = require('./routes/poll');
 const commentRoutes = require('./routes/comment');
 const aiService     = require('./services/ai');
+const supabase      = require('./services/supabase');
 
-const app    = express();
-const server = http.createServer(app);
-const io     = new Server(server, { cors: { origin: '*', methods: ['GET','POST','PUT','PATCH','DELETE'] } });
-
+const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use((req, _res, next) => { req.io = io; next(); });
 
-// Routes
+// ── Routes ──────────────────────────────────────────────────
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/poll',    pollRoutes);
 app.use('/api/comment', commentRoutes);
 
-// ── AI Summary ─────────────────────────────────────────────────
+// ── Config (public keys for frontend) ───────────────────────
+app.get('/api/config', (_req, res) => {
+  res.json({
+    supabaseUrl:     process.env.SUPABASE_URL     || '',
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+  });
+});
+
+// ── AI Summary ───────────────────────────────────────────────
 app.post('/api/ai/summary', async (req, res) => {
   try {
     const { comments } = req.body;
     if (!Array.isArray(comments) || !comments.length)
       return res.status(400).json({ error: 'comments array required' });
+
     const result = await aiService.generateSummary(comments);
-    io.emit('ai_update', result);
+
+    // Persist latest summary to Supabase
+    const { data: existing } = await supabase
+      .from('ai_summaries').select('id').limit(1).maybeSingle();
+    if (existing) {
+      await supabase.from('ai_summaries').update(result).eq('id', existing.id);
+    } else {
+      await supabase.from('ai_summaries').insert(result);
+    }
+
     res.json(result);
   } catch (err) {
     console.error('[AI summary]', err.message);
@@ -39,26 +52,57 @@ app.post('/api/ai/summary', async (req, res) => {
   }
 });
 
-// ── AI Settings ────────────────────────────────────────────────
-app.get('/api/settings', (_req, res) => {
-  const s = aiService.getSettings();
+// GET latest AI summary for dashboard polling
+app.get('/api/ai/latest', async (_req, res) => {
+  const { data } = await supabase
+    .from('ai_summaries').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  res.json(data || {});
+});
+
+// ── AI Settings ──────────────────────────────────────────────
+app.get('/api/settings', async (_req, res) => {
+  // Load from Supabase settings table (persists across cold starts)
+  const { data: rows } = await supabase.from('settings').select('key, value');
+  const map = {};
+  (rows || []).forEach(r => { map[r.key] = r.value; });
+
+  const provider = map['provider'] || process.env.AI_PROVIDER || 'openai';
+  const model    = map['model']    || process.env.AI_MODEL    || '';
+  const apiKey   = map['api_key']  || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY || '';
+
+  // Sync into ai service for this request lifecycle
+  if (apiKey) aiService.updateSettings({ provider, model, apiKey });
+
   res.json({
-    provider: s.provider, model: s.model,
-    apiKeySet: !!s.apiKey,
-    apiKeyMasked: s.apiKey ? s.apiKey.slice(0,8)+'...'+s.apiKey.slice(-4) : '',
-    models: aiService.getModelsForProvider(s.provider),
+    provider, model,
+    apiKeySet:    !!apiKey,
+    apiKeyMasked: apiKey ? apiKey.slice(0,8)+'...'+apiKey.slice(-4) : '',
+    models: aiService.getModelsForProvider(provider),
   });
 });
-app.post('/api/settings', (req, res) => {
+
+app.post('/api/settings', async (req, res) => {
   const { provider, model, apiKey } = req.body;
-  aiService.updateSettings({ provider, model, apiKey });
+
+  // Upsert into Supabase
+  const upserts = [];
+  if (provider) upserts.push({ key: 'provider', value: provider });
+  if (model)    upserts.push({ key: 'model',    value: model    });
+  if (apiKey)   upserts.push({ key: 'api_key',  value: apiKey   });
+
+  for (const u of upserts) {
+    await supabase.from('settings').upsert(u, { onConflict: 'key' });
+  }
+
+  if (apiKey) aiService.updateSettings({ provider, model, apiKey });
   res.json({ status: 'ok', provider, model });
 });
+
 app.get('/api/settings/models', (req, res) => {
   res.json(aiService.getModelsForProvider(req.query.provider || 'openai'));
 });
 
-// ── Admin auth ─────────────────────────────────────────────────
+// ── Admin auth ────────────────────────────────────────────────
 app.post('/api/admin/login', (req, res) => {
   if (req.body.password === (process.env.ADMIN_PASSWORD || 'admin1234')) {
     res.json({ token: Buffer.from(`admin:${Date.now()}`).toString('base64') });
@@ -67,68 +111,81 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
-// ── Engagement Score ───────────────────────────────────────────
-app.get('/api/engagement', (req, res) => {
+// ── Engagement Score ──────────────────────────────────────────
+app.get('/api/engagement', async (_req, res) => {
   try {
-    const checkinMap = checkinRoutes.checkins;
-    const polls      = [...pollRoutes.polls.values()];
-    const ci  = checkinMap ? checkinMap.size : 0;
-    const tv  = polls.reduce((s, p) => s + (p.voters ? p.voters.size : 0), 0);
-    const cmData = commentRoutes.getStats();
-    const cm  = cmData.total;
-    const pos = cmData.positive;
-    const tot = cm || 1;
+    const [
+      { count: ci },
+      { count: cm },
+      { count: pos },
+      { data: responses },
+    ] = await Promise.all([
+      supabase.from('checkins').select('*', { count: 'exact', head: true }),
+      supabase.from('comments').select('*', { count: 'exact', head: true }),
+      supabase.from('comments').select('*', { count: 'exact', head: true }).eq('sentiment','positive'),
+      supabase.from('poll_responses').select('session_id'),
+    ]);
 
-    const voteRatio    = ci > 0 ? Math.min(tv / ci, 1) : 0;
-    const commentRatio = ci > 0 ? Math.min(cm / ci, 1) : 0;
-    const posRatio     = pos / tot;
-    const score = Math.min(100, Math.round(voteRatio * 35 + commentRatio * 35 + posRatio * 30));
-    res.json({ score, checkins: ci, votes: tv, comments: cm });
+    const checkins  = ci  || 0;
+    const comments  = cm  || 0;
+    const positive  = pos || 0;
+    const tv = new Set((responses||[]).map(r=>r.session_id)).size;
+
+    const safeCI       = checkins || 1;
+    const voteRatio    = Math.min(tv       / safeCI, 1);
+    const commentRatio = Math.min(comments / safeCI, 1);
+    const posRatio     = positive / (comments || 1);
+    const score = Math.min(100, Math.round(voteRatio*35 + commentRatio*35 + posRatio*30));
+
+    res.json({ score, checkins, votes: tv, comments });
   } catch (e) {
+    console.error('[Engagement]', e.message);
     res.json({ score: 0 });
   }
 });
 
-// ── CSV Export ─────────────────────────────────────────────────
+// ── CSV Export ────────────────────────────────────────────────
 app.get('/api/export/csv', async (req, res) => {
   try {
     const type = req.query.type || 'comments';
-    const sheets = require('./services/sheets');
+    const escape = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+    let headers, rows = [], filename;
 
-    let rows, filename, headers;
     if (type === 'comments') {
-      const data = await sheets.readRows('Comments').catch(() => []);
+      const { data } = await supabase.from('comments').select('*').order('created_at');
       headers  = 'id,author,gender,rating,text,sentiment,timestamp';
-      rows     = data.slice(1); // skip header row
       filename = 'nexus_comments.csv';
+      rows = (data||[]).map(c =>
+        [c.id, c.author, c.gender, c.rating||'', c.text, c.sentiment, c.created_at].map(escape).join(','));
+
     } else if (type === 'checkins') {
-      const data = await sheets.readRows('Checkins').catch(() => []);
+      const { data } = await supabase.from('checkins').select('*').order('created_at');
       headers  = 'sessionId,name,timestamp';
-      rows     = data.slice(1);
       filename = 'nexus_checkins.csv';
+      rows = (data||[]).map(c => [c.session_id, c.name, c.created_at].map(escape).join(','));
+
     } else if (type === 'votes') {
-      const data = await sheets.readRows('Votes').catch(() => []);
-      headers  = 'pollId,question,option,sessionId,timestamp';
-      rows     = data.slice(1);
+      const { data } = await supabase
+        .from('poll_responses').select('*, polls(question)').order('created_at');
+      headers  = 'pollId,question,response,sessionId,timestamp';
       filename = 'nexus_votes.csv';
+      rows = (data||[]).map(r => [
+        r.poll_id, r.polls?.question||'',
+        r.answer || (r.option_index !== null ? `option_${r.option_index}` : '') || (r.rating ? `rating_${r.rating}` : ''),
+        r.session_id, r.created_at,
+      ].map(escape).join(','));
     }
 
-    const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const csv = [headers, ...(rows||[]).map(r => r.map(escape).join(','))].join('\n');
-
+    const csv = [headers, ...rows].join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send('﻿' + csv); // BOM for Excel Thai
+    res.send('﻿' + csv);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── Socket ─────────────────────────────────────────────────────
-io.on('connection', socket => {
-  console.log(`[Socket] connected: ${socket.id}`);
-  socket.on('disconnect', () => console.log(`[Socket] disconnected: ${socket.id}`));
-});
-
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`NEXUS running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`NEXUS running at http://localhost:${PORT}`));
+
+module.exports = app; // required for Vercel

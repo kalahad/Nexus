@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/css/nexus-theme.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<!-- Socket.io replaced by polling -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -303,12 +303,17 @@ function swTab(name, btn) {
   btn.classList.add('active');
 }
 
-// ── Socket ──
-const socket = io();
-socket.on('checkin_update', d => { document.getElementById('s-ci').textContent = d.total; fetchEngagement(); });
-socket.on('poll_update',    () => fetchPolls());
-socket.on('comment_update', d => { updateComments(d); fetchEngagement(); });
-socket.on('ai_update',      d => renderAI(d));
+// ── Checkin count polling ──
+async function fetchCheckinCount() {
+  const d = await fetch('/api/checkin').then(r=>r.json()).catch(()=>null);
+  if (d) document.getElementById('s-ci').textContent = d.total;
+}
+
+// ── AI Summary polling ──
+async function fetchAISummary() {
+  const d = await fetch('/api/ai/latest').then(r=>r.json()).catch(()=>null);
+  if (d?.summary) renderAI(d);
+}
 
 // ── QR ──
 fetch('/api/checkin/qr').then(r=>r.json()).then(d => {
@@ -523,12 +528,18 @@ function renderAI(data) {
      ${recs ? `<ul style="padding-left:1.2rem;font-size:.82rem;color:var(--sub);border-top:1px solid var(--border);padding-top:.6rem;margin-top:.3rem">${recs}</ul>` : ''}`;
 }
 
-// ── Init ──
+// ── Init + Polling ──
+fetchCheckinCount();
 fetchPolls();
 fetchComments();
 fetchEngagement();
-setInterval(fetchPolls, 12000);
-setInterval(fetchEngagement, 20000);
+fetchAISummary();
+
+setInterval(fetchCheckinCount, 4000);
+setInterval(fetchPolls,        4000);
+setInterval(fetchComments,     5000);
+setInterval(fetchEngagement,   10000);
+setInterval(fetchAISummary,    15000);
 </script>
 </body>
 </html>

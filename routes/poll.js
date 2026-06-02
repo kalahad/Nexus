@@ -1,51 +1,58 @@
 /**
- * routes/poll.js
- * Poll CRUD — 3 types:
- *   'choice'  — multiple choice buttons
- *   'text'    — free-text answer → word cloud
- *   'rating'  — 1–5 star rating poll
- *
- * POST   /api/poll                  create
- * GET    /api/poll                  list all
- * GET    /api/poll/:id              single poll
- * POST   /api/poll/:id/vote         choice vote
- * POST   /api/poll/:id/answer       text answer
- * POST   /api/poll/:id/rate         star rating
- * GET    /api/poll/:id/wordcloud    word freq (text polls)
- * PATCH  /api/poll/:id/visibility   { showResults: bool }
- * PATCH  /api/poll/:id/active       { active: bool }
- * DELETE /api/poll/:id              delete
+ * routes/poll.js  (Supabase version)
+ * POST   /api/poll
+ * GET    /api/poll
+ * GET    /api/poll/:id
+ * POST   /api/poll/:id/vote
+ * POST   /api/poll/:id/answer
+ * POST   /api/poll/:id/rate
+ * GET    /api/poll/:id/wordcloud
+ * PATCH  /api/poll/:id/visibility
+ * PATCH  /api/poll/:id/active
+ * DELETE /api/poll/:id
  */
-const express = require('express');
-const router  = express.Router();
-const { v4: uuidv4 } = require('uuid');
-const sheets  = require('../services/sheets');
+const express  = require('express');
+const router   = express.Router();
+const supabase = require('../services/supabase');
 
-const polls = new Map();
+// ── Helpers ──────────────────────────────────────────────────
 
-// ─── helpers ──────────────────────────────────────────────────
-function sanitize(p) {
+function buildPollData(poll, responses = []) {
+  const voters    = new Set(responses.map(r => r.session_id));
   const base = {
-    id:           p.id,
-    question:     p.question,
-    type:         p.type,
-    active:       p.active,
-    showResults:  p.showResults,
-    createdAt:    p.createdAt,
-    voterCount:   p.voters.size,
-    totalVotes:   0,
+    id:          poll.id,
+    question:    poll.question,
+    type:        poll.type,
+    active:      poll.active,
+    showResults: poll.show_results,
+    createdAt:   poll.created_at,
+    voterCount:  voters.size,
+    totalVotes:  responses.length,
   };
-  if (p.type === 'choice') {
-    base.options   = p.options;
-    base.totalVotes = p.options.reduce((s, o) => s + o.votes, 0);
-  } else if (p.type === 'text') {
-    base.answers   = p.answers;
-    base.totalVotes = p.answers.length;
-  } else if (p.type === 'rating') {
-    base.ratingCounts = p.ratingCounts;
-    base.totalVotes   = Object.values(p.ratingCounts).reduce((s, v) => s + v, 0);
-    const sum = Object.entries(p.ratingCounts).reduce((s, [k, v]) => s + Number(k) * v, 0);
-    base.average = base.totalVotes ? Math.round(sum / base.totalVotes * 10) / 10 : null;
+
+  if (poll.type === 'choice') {
+    const opts = poll.options || [];
+    const voteCounts = {};
+    responses.forEach(r => {
+      if (r.option_index !== null && r.option_index !== undefined)
+        voteCounts[r.option_index] = (voteCounts[r.option_index] || 0) + 1;
+    });
+    base.options    = opts.map((o, i) => ({ text: o.text || o, votes: voteCounts[i] || 0 }));
+    base.totalVotes = responses.length;
+
+  } else if (poll.type === 'text') {
+    base.answers    = responses.filter(r => r.answer).map(r => r.answer);
+    base.totalVotes = base.answers.length;
+
+  } else if (poll.type === 'rating') {
+    const rc = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+    let sum = 0;
+    responses.forEach(r => {
+      if (r.rating) { rc[r.rating] = (rc[r.rating]||0)+1; sum += r.rating; }
+    });
+    base.ratingCounts = rc;
+    base.totalVotes   = responses.length;
+    base.average      = responses.length ? Math.round(sum/responses.length*10)/10 : null;
   }
   return base;
 }
@@ -54,135 +61,148 @@ function wordFreq(answers) {
   const stop = new Set(['และ','ที่','ใน','ของ','การ','มี','ได้','จาก','ให้','เป็น','กับ','แต่','ไม่','นี้','จะ','คือ','ว่า','โดย','หรือ','ซึ่ง','แล้ว','ก็','ด้วย','the','a','an','and','or','of','in','on','at','to','for','is','are','was','with','that','this','it','be','as','by','from','but','not']);
   const freq = {};
   answers.forEach(a => {
-    a.toLowerCase().split(/[\s,.\-()[\]/\\|!?;:""'']+/).filter(w => w.length > 1 && !stop.has(w))
-      .forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+    a.toLowerCase().split(/[\s,.\-()[\]/\\|!?;:""'']+/)
+      .filter(w => w.length > 1 && !stop.has(w))
+      .forEach(w => { freq[w] = (freq[w]||0)+1; });
   });
-  return Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,60).map(([word,count]) => ({word,count}));
+  return Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,60).map(([word,count])=>({word,count}));
 }
 
-// ─── POST /api/poll ────────────────────────────────────────────
-router.post('/', (req, res) => {
+async function getFullPoll(id) {
+  const [{ data: poll }, { data: responses }] = await Promise.all([
+    supabase.from('polls').select('*').eq('id', id).maybeSingle(),
+    supabase.from('poll_responses').select('*').eq('poll_id', id),
+  ]);
+  if (!poll) return null;
+  return buildPollData(poll, responses || []);
+}
+
+// ── POST /api/poll ────────────────────────────────────────────
+router.post('/', async (req, res) => {
   const { question, type = 'choice', options = [] } = req.body;
   if (!question) return res.status(400).json({ error: 'question required' });
-  if (type === 'choice' && options.length < 2) return res.status(400).json({ error: 'need ≥2 options' });
+  if (type === 'choice' && options.length < 2)
+    return res.status(400).json({ error: 'need ≥2 options' });
 
-  const poll = {
-    id: uuidv4(), question, type,
-    options:      type === 'choice' ? options.map(t => ({ text: t, votes: 0 })) : [],
-    answers:      [],
-    ratingCounts: { 1:0, 2:0, 3:0, 4:0, 5:0 },
-    voters:       new Set(),
-    active:       true,
-    showResults:  false,
-    createdAt:    new Date().toISOString(),
-  };
-  polls.set(poll.id, poll);
-  req.io.emit('poll_update', sanitize(poll));
-  res.status(201).json(sanitize(poll));
+  const opts = type === 'choice' ? options.map(t => ({ text: t })) : [];
+  const { data, error } = await supabase
+    .from('polls')
+    .insert({ question, type, options: opts })
+    .select().single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(buildPollData(data, []));
 });
 
-// ─── GET /api/poll ─────────────────────────────────────────────
-router.get('/', (_req, res) => res.json([...polls.values()].map(sanitize)));
+// ── GET /api/poll ─────────────────────────────────────────────
+router.get('/', async (_req, res) => {
+  const [{ data: polls }, { data: allResponses }] = await Promise.all([
+    supabase.from('polls').select('*').order('created_at'),
+    supabase.from('poll_responses').select('*'),
+  ]);
+  if (!polls) return res.json([]);
 
-// ─── GET /api/poll/:id ─────────────────────────────────────────
-router.get('/:id', (req, res) => {
-  const p = polls.get(req.params.id);
-  if (!p) return res.status(404).json({ error: 'not found' });
-  res.json(sanitize(p));
+  const byPoll = {};
+  (allResponses || []).forEach(r => {
+    (byPoll[r.poll_id] = byPoll[r.poll_id] || []).push(r);
+  });
+
+  res.json(polls.map(p => buildPollData(p, byPoll[p.id] || [])));
 });
 
-// ─── POST /api/poll/:id/vote (choice) ─────────────────────────
+// ── GET /api/poll/:id ─────────────────────────────────────────
+router.get('/:id', async (req, res) => {
+  const poll = await getFullPoll(req.params.id);
+  if (!poll) return res.status(404).json({ error: 'not found' });
+  res.json(poll);
+});
+
+// ── POST /api/poll/:id/vote ───────────────────────────────────
 router.post('/:id/vote', async (req, res) => {
   const { sessionId, optionIndex } = req.body;
-  const p = polls.get(req.params.id);
-  if (!p)                    return res.status(404).json({ error: 'not found' });
-  if (!p.active)             return res.status(400).json({ error: 'poll closed' });
-  if (p.type !== 'choice')   return res.status(400).json({ error: 'use /answer or /rate' });
-  if (p.voters.has(sessionId)) return res.status(409).json({ error: 'already voted' });
-  if (optionIndex < 0 || optionIndex >= p.options.length) return res.status(400).json({ error: 'invalid option' });
-
-  p.options[optionIndex].votes++;
-  p.voters.add(sessionId);
-  sheets.appendRow('Votes', [p.id, p.question, p.options[optionIndex].text, sessionId, new Date().toISOString()]).catch(()=>{});
-  const s = sanitize(p);
-  req.io.emit('poll_update', s);
-  res.json(s);
-});
-
-// ─── POST /api/poll/:id/answer (text) ─────────────────────────
-router.post('/:id/answer', async (req, res) => {
-  const { sessionId, answer } = req.body;
-  const p = polls.get(req.params.id);
+  const { data: p } = await supabase.from('polls').select('*').eq('id', req.params.id).maybeSingle();
   if (!p)                  return res.status(404).json({ error: 'not found' });
   if (!p.active)           return res.status(400).json({ error: 'poll closed' });
-  if (p.type !== 'text')   return res.status(400).json({ error: 'use /vote or /rate' });
-  if (p.voters.has(sessionId)) return res.status(409).json({ error: 'already answered' });
+  if (p.type !== 'choice') return res.status(400).json({ error: 'use /answer or /rate' });
 
-  p.answers.push(answer.trim());
-  p.voters.add(sessionId);
-  sheets.appendRow('Answers', [p.id, p.question, answer, sessionId, new Date().toISOString()]).catch(()=>{});
-  const s = sanitize(p);
-  req.io.emit('poll_update', { ...s, wordcloud: wordFreq(p.answers) });
-  res.json(s);
+  const { data: dup } = await supabase.from('poll_responses')
+    .select('id').eq('poll_id', req.params.id).eq('session_id', sessionId).maybeSingle();
+  if (dup) return res.status(409).json({ error: 'already voted' });
+
+  await supabase.from('poll_responses')
+    .insert({ poll_id: req.params.id, session_id: sessionId, option_index: optionIndex });
+
+  res.json(await getFullPoll(req.params.id));
 });
 
-// ─── POST /api/poll/:id/rate (rating) ─────────────────────────
+// ── POST /api/poll/:id/answer ─────────────────────────────────
+router.post('/:id/answer', async (req, res) => {
+  const { sessionId, answer } = req.body;
+  const { data: p } = await supabase.from('polls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!p)                return res.status(404).json({ error: 'not found' });
+  if (!p.active)         return res.status(400).json({ error: 'poll closed' });
+  if (p.type !== 'text') return res.status(400).json({ error: 'use /vote or /rate' });
+
+  const { data: dup } = await supabase.from('poll_responses')
+    .select('id').eq('poll_id', req.params.id).eq('session_id', sessionId).maybeSingle();
+  if (dup) return res.status(409).json({ error: 'already answered' });
+
+  await supabase.from('poll_responses')
+    .insert({ poll_id: req.params.id, session_id: sessionId, answer: answer.trim() });
+
+  res.json(await getFullPoll(req.params.id));
+});
+
+// ── POST /api/poll/:id/rate ───────────────────────────────────
 router.post('/:id/rate', async (req, res) => {
   const { sessionId, rating } = req.body;
   const r = Number(rating);
-  const p = polls.get(req.params.id);
-  if (!p)                   return res.status(404).json({ error: 'not found' });
-  if (!p.active)            return res.status(400).json({ error: 'poll closed' });
-  if (p.type !== 'rating')  return res.status(400).json({ error: 'use /vote or /answer' });
-  if (p.voters.has(sessionId)) return res.status(409).json({ error: 'already rated' });
-  if (r < 1 || r > 5)      return res.status(400).json({ error: 'rating must be 1–5' });
+  const { data: p } = await supabase.from('polls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!p)                  return res.status(404).json({ error: 'not found' });
+  if (!p.active)           return res.status(400).json({ error: 'poll closed' });
+  if (p.type !== 'rating') return res.status(400).json({ error: 'use /vote or /answer' });
+  if (r < 1 || r > 5)     return res.status(400).json({ error: 'rating must be 1-5' });
 
-  p.ratingCounts[r]++;
-  p.voters.add(sessionId);
-  sheets.appendRow('Votes', [p.id, p.question, `rating:${r}`, sessionId, new Date().toISOString()]).catch(()=>{});
-  const s = sanitize(p);
-  req.io.emit('poll_update', s);
-  res.json(s);
+  const { data: dup } = await supabase.from('poll_responses')
+    .select('id').eq('poll_id', req.params.id).eq('session_id', sessionId).maybeSingle();
+  if (dup) return res.status(409).json({ error: 'already rated' });
+
+  await supabase.from('poll_responses')
+    .insert({ poll_id: req.params.id, session_id: sessionId, rating: r });
+
+  res.json(await getFullPoll(req.params.id));
 });
 
-// ─── GET /api/poll/:id/wordcloud ───────────────────────────────
-router.get('/:id/wordcloud', (req, res) => {
-  const p = polls.get(req.params.id);
-  if (!p) return res.status(404).json({ error: 'not found' });
-  res.json({ pollId: p.id, words: wordFreq(p.answers) });
+// ── GET /api/poll/:id/wordcloud ───────────────────────────────
+router.get('/:id/wordcloud', async (req, res) => {
+  const { data: responses } = await supabase
+    .from('poll_responses').select('answer')
+    .eq('poll_id', req.params.id).not('answer', 'is', null);
+  const answers = (responses || []).map(r => r.answer).filter(Boolean);
+  res.json({ pollId: req.params.id, words: wordFreq(answers) });
 });
 
-// ─── PATCH /api/poll/:id/visibility ───────────────────────────
-router.patch('/:id/visibility', (req, res) => {
-  const p = polls.get(req.params.id);
-  if (!p) return res.status(404).json({ error: 'not found' });
-  p.showResults = !!req.body.showResults;
-  const s = sanitize(p);
-  req.io.emit('poll_update', s);
-  // Separate event so participant page can react immediately
-  req.io.emit('poll_visibility', { pollId: p.id, showResults: p.showResults });
-  res.json(s);
+// ── PATCH /api/poll/:id/visibility ───────────────────────────
+router.patch('/:id/visibility', async (req, res) => {
+  const { error } = await supabase.from('polls')
+    .update({ show_results: !!req.body.showResults }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(await getFullPoll(req.params.id));
 });
 
-// ─── PATCH /api/poll/:id/active ───────────────────────────────
-router.patch('/:id/active', (req, res) => {
-  const p = polls.get(req.params.id);
-  if (!p) return res.status(404).json({ error: 'not found' });
-  p.active = !!req.body.active;
-  const s = sanitize(p);
-  req.io.emit('poll_update', s);
-  res.json(s);
+// ── PATCH /api/poll/:id/active ────────────────────────────────
+router.patch('/:id/active', async (req, res) => {
+  const { error } = await supabase.from('polls')
+    .update({ active: !!req.body.active }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(await getFullPoll(req.params.id));
 });
 
-// ─── DELETE /api/poll/:id ──────────────────────────────────────
-router.delete('/:id', (req, res) => {
-  if (!polls.has(req.params.id)) return res.status(404).json({ error: 'not found' });
-  polls.delete(req.params.id);
-  req.io.emit('poll_update', { deleted: req.params.id });
+// ── DELETE /api/poll/:id ──────────────────────────────────────
+router.delete('/:id', async (req, res) => {
+  const { error } = await supabase.from('polls').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ status: 'deleted' });
 });
 
-// Export polls map for CSV
 module.exports = router;
-module.exports.polls = polls;
-module.exports.sanitize = sanitize;

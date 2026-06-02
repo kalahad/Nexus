@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/css/nexus-theme.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<!-- Socket.io replaced by polling -->
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:var(--trans)}
@@ -369,16 +369,13 @@ function showPage(name, el) {
   if (name==='checkins') fetchCheckins();
 }
 
-// ── Socket ──
-const socket = io();
-socket.on('checkin_update', d=>{ document.getElementById('ov-ci').textContent=d.total; updateStat(); });
-socket.on('poll_update',    ()=>fetchPolls());
-socket.on('comment_update', d=>{ document.getElementById('ov-cm').textContent=d.total||0; });
+// Socket.io removed — updateStat() polls every 8s in init()
 
 // ── Init ──
 function init() {
   loadQr(); fetchPolls(); loadSettings(); updateStat();
-  setInterval(updateStat, 12000);
+  setInterval(updateStat, 8000);
+  setInterval(fetchPolls, 8000);
 }
 
 async function updateStat() {

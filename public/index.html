@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/css/nexus-theme.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<!-- Socket.io replaced by polling -->
 <style>
 /* ─── Page-specific layout ─── */
 .page{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:1.1rem 1rem 3.5rem}
@@ -215,13 +215,27 @@ window.onLangChange = function() {
   fetchPolls();
 };
 
-// ── Socket ──
-const socket = io();
-socket.on('connect',     ()=>{ isConnected=true;  setConn(true);  if(checkedIn) showPost(); fetchPolls(); });
-socket.on('disconnect',  ()=>{ isConnected=false; setConn(false); });
-socket.on('checkin_update', d=>setCount(d.total));
-socket.on('poll_update',    ()=>fetchPolls());
-socket.on('poll_visibility',d=>{ pollResults[d.pollId]=d.showResults; fetchPolls(); });
+// ── Polling (replaces Socket.io) ──
+async function pollUpdates() {
+  try {
+    const d = await fetch('/api/checkin').then(r=>r.json());
+    if (!isConnected) { isConnected=true; setConn(true); }
+    setCount(d.total);
+  } catch { isConnected=false; setConn(false); }
+  fetchPolls();
+}
+
+// Init on load
+(async function init() {
+  try {
+    const d = await fetch('/api/checkin').then(r=>r.json());
+    isConnected=true; setConn(true); setCount(d.total);
+    if (checkedIn) showPost();
+    fetchPolls();
+  } catch { setConn(false); }
+})();
+
+setInterval(pollUpdates, 3000);
 
 function setConn(ok) {
   document.getElementById('conn-dot').style.background = ok?'var(--green)':'var(--red)';

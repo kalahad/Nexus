@@ -1,25 +1,19 @@
 /**
- * routes/checkin.js
- * QR Check-in API
- *
- * POST /api/checkin        — participant checks in with sessionId + name
- * GET  /api/checkin        — list all check-ins (admin)
- * GET  /api/checkin/qr     — generate QR code data URL for the check-in URL
+ * routes/checkin.js  (Supabase version)
+ * POST /api/checkin       — check in
+ * GET  /api/checkin       — list all
+ * GET  /api/checkin/qr    — QR code
  */
-const express = require('express');
-const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
-const QRCode = require('qrcode');
-const sheetsService = require('../services/sheets');
+const express  = require('express');
+const router   = express.Router();
+const QRCode   = require('qrcode');
+const supabase = require('../services/supabase');
 
-// In-memory store (mirrors Sheets as cache)
-const checkins = new Map(); // sessionId -> { name, timestamp }
-
-// GET /api/checkin/qr — generate QR
+// GET /api/checkin/qr
 router.get('/qr', async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const url = `${baseUrl}/index.html`;
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const url     = `${baseUrl}/`;
     const dataUrl = await QRCode.toDataURL(url, { width: 300 });
     res.json({ qr: dataUrl, url });
   } catch (err) {
@@ -30,37 +24,43 @@ router.get('/qr', async (req, res) => {
 // POST /api/checkin
 router.post('/', async (req, res) => {
   const { name, sessionId } = req.body;
-  if (!name || !sessionId) {
-    return res.status(400).json({ error: 'name and sessionId are required' });
-  }
+  if (!name || !sessionId)
+    return res.status(400).json({ error: 'name and sessionId required' });
 
-  if (checkins.has(sessionId)) {
+  // Already checked in?
+  const { data: existing } = await supabase
+    .from('checkins').select('id').eq('session_id', sessionId).maybeSingle();
+  if (existing)
     return res.json({ status: 'already_checked_in', sessionId });
-  }
 
-  const entry = { sessionId, name, timestamp: new Date().toISOString() };
-  checkins.set(sessionId, entry);
+  const { error } = await supabase
+    .from('checkins').insert({ session_id: sessionId, name });
+  if (error)
+    return res.status(500).json({ error: error.message });
 
-  // Persist to Google Sheets (non-blocking)
-  sheetsService
-    .appendRow('Checkins', [sessionId, name, entry.timestamp])
-    .catch((err) => console.error('[Sheets checkin]', err.message));
+  const { count } = await supabase
+    .from('checkins').select('*', { count: 'exact', head: true });
 
-  req.io.emit('checkin_update', {
-    total: checkins.size,
-    latest: entry,
-  });
-
-  res.json({ status: 'ok', sessionId, total: checkins.size });
+  res.json({ status: 'ok', sessionId, total: count || 0 });
 });
 
 // GET /api/checkin
-router.get('/', (_req, res) => {
+router.get('/', async (_req, res) => {
+  const { data, count, error } = await supabase
+    .from('checkins')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+
   res.json({
-    total: checkins.size,
-    checkins: Array.from(checkins.values()),
+    total: count || 0,
+    checkins: (data || []).map(c => ({
+      sessionId:  c.session_id,
+      name:       c.name,
+      timestamp:  c.created_at,
+    })),
   });
 });
 
 module.exports = router;
-module.exports.checkins = checkins;

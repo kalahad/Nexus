@@ -6,6 +6,12 @@ Admin Panel: https://nexus-delta-amber.vercel.app/admin.html
 http://localhost:3000/admin.html
 รหัสผ่านเริ่มต้น: a-d-m-i-n-1-2-3-4 (del-)
 
+supperbase
+https://supabase.com/
+login github kulwarun@hotmail.com (Kalahad)
+project nexus-app
+password database :ptiPJ67R5g!K4w$
+
 google Sheets (kulwarun@gmail.com)
 https://docs.google.com/spreadsheets/d/1tAqzHa4xAuGKHL6eXpOcjWx40oFoMssdRgS9S2GSeBU/edit?usp=sharing
 
