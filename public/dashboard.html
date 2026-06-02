@@ -256,9 +256,16 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 window.onLangChange = function() {
   fetchPolls();
   fetchComments();
-  // re-render ai_placeholder if box has default text
+  // Only reset ai-box placeholder if AI content hasn't been loaded yet
+  // (data-i18n is removed by renderAI once real content is set)
   const aiBox = document.getElementById('ai-box');
   if (aiBox && aiBox.dataset.i18n) aiBox.textContent = NX.t('ai_placeholder');
+  // Re-render comment count label
+  const cmCount = document.getElementById('cm-count');
+  if (cmCount) {
+    const n = parseInt(cmCount.textContent) || 0;
+    cmCount.textContent = n + ' ' + (NX.lang === 'th' ? 'รายการ' : 'items');
+  }
 };
 
 // ── Clock ──
@@ -517,10 +524,14 @@ async function fetchEngagement() {
 // ── AI Summary ──
 function renderAI(data) {
   if (!data?.summary) return;
+  const aiBox = document.getElementById('ai-box');
+  if (!aiBox) return;
+  // Remove data-i18n to prevent applyLang() from overwriting AI content
+  delete aiBox.dataset.i18n;
   const themesTh = (data.keyThemesTh||data.keyThemes||[]).map(t=>`<span class="theme-tag">${t}</span>`).join('');
   const themesEn = (data.keyThemesEn||[]).map(t=>`<span class="theme-tag" style="background:rgba(0,229,255,.1);color:var(--cyan)">${t}</span>`).join('');
   const recs     = (data.recommendations||[]).map(r=>`<li style="margin:.25rem 0">${r}</li>`).join('');
-  document.getElementById('ai-box').innerHTML =
+  aiBox.innerHTML =
     `${data.summaryTh ? `<p style="margin-bottom:.5rem;font-weight:500">${data.summaryTh}</p>` : ''}
      ${data.summaryEn ? `<p style="margin-bottom:.75rem;color:var(--cyan);font-size:.85rem;font-style:italic">${data.summaryEn}</p>` : ''}
      ${themesTh ? `<div style="margin-bottom:.5rem">${themesTh}</div>` : ''}

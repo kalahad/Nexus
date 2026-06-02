@@ -267,11 +267,22 @@ function showPost() {
 
 // ── Polls ──
 async function fetchPolls() {
+  // Save text inputs & focused element before re-render (prevents clearing while typing)
+  const savedInputs = {};
+  document.querySelectorAll('[id^="ta-"]').forEach(i => { if (i.value) savedInputs[i.id] = i.value; });
+  const focusedId = document.activeElement?.id;
+
   const polls = await fetch('/api/poll').then(r=>r.json()).catch(()=>[]);
   const active = polls.filter(p=>p.active);
   const el = document.getElementById('poll-container');
   if (!active.length) { el.innerHTML=`<p style="color:var(--muted);font-size:.84rem">${NX.t('poll_wait')}</p>`; return; }
   el.innerHTML = active.map(renderPoll).join('');
+
+  // Restore text inputs and refocus
+  Object.entries(savedInputs).forEach(([id, val]) => {
+    const inp = document.getElementById(id);
+    if (inp) { inp.value = val; if (id === focusedId) { inp.focus(); inp.setSelectionRange(val.length, val.length); } }
+  });
 }
 
 function renderPoll(p) {

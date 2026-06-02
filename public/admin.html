@@ -414,7 +414,8 @@ function setPType(t) {
 function addOpt() {
   const c = document.querySelectorAll('#poll-opts .opt-row').length+1;
   const r = document.createElement('div'); r.className='opt-row';
-  r.innerHTML=`<input type="text" placeholder="ตัวเลือก ${c}"/>`;
+  const ph = NX.lang==='th' ? `ตัวเลือก ${c}` : `Option ${c}`;
+  r.innerHTML=`<input type="text" placeholder="${ph}"/>`;
   document.getElementById('poll-opts').appendChild(r);
 }
 async function createPoll() {
@@ -423,7 +424,7 @@ async function createPoll() {
   const body = { question:q, type:curPType };
   if (curPType==='choice') {
     const opts = [...document.querySelectorAll('#poll-opts input')].map(i=>i.value.trim()).filter(Boolean);
-    if (opts.length<2) { alert('ต้องมีอย่างน้อย 2 ตัวเลือก'); return; }
+    if (opts.length<2) { alert(NX.lang==='th'?'ต้องมีอย่างน้อย 2 ตัวเลือก':'Need at least 2 options'); return; }
     body.options = opts;
   }
   await fetch('/api/poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -487,7 +488,7 @@ async function toggleActive(id, active) {
   fetchPolls();
 }
 async function deletePoll(id) {
-  if (!confirm('ลบ Poll นี้?')) return;
+  if (!confirm(NX.lang==='th'?'ลบ Poll นี้?':'Delete this poll?')) return;
   await fetch(`/api/poll/${id}`,{method:'DELETE'});
   fetchPolls();
 }

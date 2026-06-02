@@ -36,27 +36,48 @@ app.post('/api/ai/summary', async (req, res) => {
 
     const result = await aiService.generateSummary(comments);
 
-    // Persist latest summary to Supabase
+    // Map camelCase → snake_case for Supabase columns
+    const dbRecord = {
+      summary:             result.summary             || '',
+      summary_th:          result.summaryTh           || '',
+      summary_en:          result.summaryEn           || '',
+      key_themes:          result.keyThemes           || [],
+      key_themes_th:       result.keyThemesTh         || [],
+      key_themes_en:       result.keyThemesEn         || [],
+      recommendations:     result.recommendations     || [],
+      sentiment_breakdown: result.sentimentBreakdown  || {},
+    };
+
     const { data: existing } = await supabase
       .from('ai_summaries').select('id').limit(1).maybeSingle();
     if (existing) {
-      await supabase.from('ai_summaries').update(result).eq('id', existing.id);
+      await supabase.from('ai_summaries').update(dbRecord).eq('id', existing.id);
     } else {
-      await supabase.from('ai_summaries').insert(result);
+      await supabase.from('ai_summaries').insert(dbRecord);
     }
 
-    res.json(result);
+    res.json(result); // return camelCase to admin client
   } catch (err) {
     console.error('[AI summary]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET latest AI summary for dashboard polling
+// GET latest AI summary for dashboard polling (map snake_case → camelCase)
 app.get('/api/ai/latest', async (_req, res) => {
   const { data } = await supabase
     .from('ai_summaries').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-  res.json(data || {});
+  if (!data) return res.json({});
+  res.json({
+    summary:            data.summary            || '',
+    summaryTh:          data.summary_th         || '',
+    summaryEn:          data.summary_en         || '',
+    keyThemes:          data.key_themes         || [],
+    keyThemesTh:        data.key_themes_th      || [],
+    keyThemesEn:        data.key_themes_en      || [],
+    recommendations:    data.recommendations    || [],
+    sentimentBreakdown: data.sentiment_breakdown|| {},
+  });
 });
 
 // ── AI Settings ──────────────────────────────────────────────
@@ -185,7 +206,11 @@ app.get('/api/export/csv', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`NEXUS running at http://localhost:${PORT}`));
+// Local dev: start server directly
+// Vercel serverless: uses module.exports = app (no listen needed)
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`NEXUS running at http://localhost:${PORT}`));
+}
 
-module.exports = app; // required for Vercel
+module.exports = app;
