@@ -8,12 +8,15 @@ const express    = require('express');
 const router     = express.Router();
 const aiService  = require('../services/ai');
 const supabase   = require('../services/supabase');
+const { getCurrentEventId } = require('../services/event');
 
 // ── POST /api/comment ─────────────────────────────────────────
 router.post('/', async (req, res) => {
   const { text, author, gender, rating, sessionId } = req.body;
   if (!text || !sessionId)
     return res.status(400).json({ error: 'text and sessionId required' });
+
+  const eventId = await getCurrentEventId();
 
   // Sentiment analysis (fallback neutral)
   let sentiment = 'neutral';
@@ -30,6 +33,7 @@ router.post('/', async (req, res) => {
       gender:    gender || 'unspecified',
       rating:    rating ? Number(rating) : null,
       session_id: sessionId,
+      event_id:  eventId,
       sentiment,
     })
     .select().single();
@@ -50,9 +54,11 @@ router.post('/', async (req, res) => {
 
 // ── GET /api/comment ──────────────────────────────────────────
 router.get('/', async (_req, res) => {
+  const eventId = await getCurrentEventId();
   const { data, count, error } = await supabase
     .from('comments')
     .select('*', { count: 'exact' })
+    .eq('event_id', eventId)
     .order('created_at', { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });

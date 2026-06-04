@@ -88,3 +88,50 @@ CREATE POLICY "public_all" ON settings       FOR ALL USING (true) WITH CHECK (tr
 -- ── 3. Enable Realtime (optional — สำหรับอนาคต) ───────────
 -- ไปที่ Supabase Dashboard → Database → Replication
 -- เปิด Realtime สำหรับ tables: checkins, comments, polls, poll_responses
+
+-- ══════════════════════════════════════════════════════════
+--  MIGRATION: Multi-Event Support (แนวทาง B)
+--  รัน section นี้ครั้งเดียวบน database ที่มีอยู่แล้ว
+--  ถ้า setup ใหม่ทั้งหมด: section นี้ทำงานได้เลย (IF NOT EXISTS / ON CONFLICT)
+-- ══════════════════════════════════════════════════════════
+
+-- ── M1. Events table ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS events (
+  id          TEXT PRIMARY KEY,           -- e.g. 'evt_2026_ai_summit'
+  name        TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "public_all" ON events;
+CREATE POLICY "public_all" ON events FOR ALL USING (true) WITH CHECK (true);
+
+-- ── M2. เพิ่ม event_id ในทุกตาราง ───────────────────────────
+ALTER TABLE comments     ADD COLUMN IF NOT EXISTS event_id TEXT DEFAULT 'default';
+ALTER TABLE checkins     ADD COLUMN IF NOT EXISTS event_id TEXT DEFAULT 'default';
+ALTER TABLE polls        ADD COLUMN IF NOT EXISTS event_id TEXT DEFAULT 'default';
+ALTER TABLE ai_summaries ADD COLUMN IF NOT EXISTS event_id TEXT DEFAULT 'default';
+
+-- ── M3. แก้ unique constraint ของ checkins ──────────────────
+--  เดิม: session_id UNIQUE (1 คนเช็คอินได้ครั้งเดียวตลอดกาล)
+--  ใหม่: UNIQUE(session_id, event_id) (1 คนเช็คอินได้ครั้งเดียวต่อ event)
+ALTER TABLE checkins DROP CONSTRAINT IF EXISTS checkins_session_id_key;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'checkins_session_event_unique'
+  ) THEN
+    ALTER TABLE checkins ADD CONSTRAINT checkins_session_event_unique
+      UNIQUE (session_id, event_id);
+  END IF;
+END $$;
+
+-- ── M4. Default event ────────────────────────────────────────
+INSERT INTO events (id, name)
+  VALUES ('default', 'Default Event')
+  ON CONFLICT (id) DO NOTHING;
+
+-- ── M5. ตั้งค่า current_event_id ใน settings ────────────────
+INSERT INTO settings (key, value)
+  VALUES ('current_event_id', 'default')
+  ON CONFLICT (key) DO NOTHING;

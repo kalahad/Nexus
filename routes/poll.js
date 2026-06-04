@@ -14,6 +14,7 @@
 const express  = require('express');
 const router   = express.Router();
 const supabase = require('../services/supabase');
+const { getCurrentEventId } = require('../services/event');
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -84,10 +85,11 @@ router.post('/', async (req, res) => {
   if (type === 'choice' && options.length < 2)
     return res.status(400).json({ error: 'need ≥2 options' });
 
+  const eventId = await getCurrentEventId();
   const opts = type === 'choice' ? options.map(t => ({ text: t })) : [];
   const { data, error } = await supabase
     .from('polls')
-    .insert({ question, type, options: opts })
+    .insert({ question, type, options: opts, event_id: eventId })
     .select().single();
 
   if (error) return res.status(500).json({ error: error.message });
@@ -96,8 +98,9 @@ router.post('/', async (req, res) => {
 
 // ── GET /api/poll ─────────────────────────────────────────────
 router.get('/', async (_req, res) => {
+  const eventId = await getCurrentEventId();
   const [{ data: polls }, { data: allResponses }] = await Promise.all([
-    supabase.from('polls').select('*').order('created_at'),
+    supabase.from('polls').select('*').eq('event_id', eventId).order('created_at'),
     supabase.from('poll_responses').select('*'),
   ]);
   if (!polls) return res.json([]);

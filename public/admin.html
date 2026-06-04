@@ -165,6 +165,7 @@ tr:hover td{background:var(--input-bg)}
 <div class="layout">
 <nav>
   <a class="active" onclick="showPage('overview',this)" data-i18n="nav_overview">Overview</a>
+  <a onclick="showPage('event',this)"    data-i18n="nav_event">Event</a>
   <a onclick="showPage('polls',this)"    data-i18n="nav_polls">Polls</a>
   <a onclick="showPage('comments',this)" data-i18n="nav_comments">Comments</a>
   <a onclick="showPage('checkins',this)">Check-ins</a>
@@ -203,6 +204,38 @@ tr:hover td{background:var(--input-bg)}
       <a href="/api/export/csv?type=checkins"  class="btn btn-ghost" data-i18n="btn_export_checkins">📥 Check-ins CSV</a>
       <a href="/api/export/csv?type=votes"     class="btn btn-ghost" data-i18n="btn_export_votes">📥 Votes CSV</a>
     </div>
+  </div>
+</div>
+
+<!-- ── EVENT MANAGEMENT ── -->
+<div class="page" id="page-event">
+  <div class="card">
+    <div class="card-title" data-i18n="card_current_event">Event ที่กำลังดำเนินอยู่</div>
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.2rem;flex-wrap:wrap">
+      <div style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);border-radius:10px;padding:.6rem 1rem;flex:1;min-width:180px">
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:.25rem" data-i18n="lbl_event_name">ชื่อ Event</div>
+        <div id="ev-name" style="font-size:1.05rem;font-weight:700;color:var(--text)">—</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:.6rem 1rem;flex:1;min-width:180px">
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:.25rem">Event ID</div>
+        <div id="ev-id" style="font-size:.78rem;font-family:monospace;color:var(--cyan)">—</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:.6rem 1rem;flex:1;min-width:180px">
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:.25rem" data-i18n="lbl_event_created">เริ่มเมื่อ</div>
+        <div id="ev-date" style="font-size:.78rem;color:var(--sub)">—</div>
+      </div>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:0" data-i18n="event_note">ข้อมูล Check-in, Poll, Comment และ AI Summary จะแยกตาม Event — เปลี่ยน Event แล้วข้อมูลเก่าไม่หาย</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="card_new_event">เริ่ม Event ใหม่</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.6" data-i18n="new_event_desc">เมื่อสร้าง Event ใหม่ ระบบจะเปลี่ยน Context ทันที — ผู้เข้าร่วมจะเช็คอินได้ใหม่ Poll และ Comment จะเริ่มนับใหม่</p>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <input type="text" id="new-event-name" placeholder="ชื่องาน เช่น AI Summit 2026, Workshop รุ่น 3" style="flex:1;min-width:200px" maxlength="100"/>
+      <button class="btn btn-cyan" onclick="startNewEvent()" data-i18n="btn_new_event">เริ่ม Event ใหม่</button>
+    </div>
+    <p id="event-msg" style="font-size:.78rem;min-height:1.1rem;margin-top:.35rem"></p>
   </div>
 </div>
 
@@ -335,6 +368,7 @@ window.onLangChange = function() {
   fetchPolls();
   if (document.getElementById('page-comments').classList.contains('active')) fetchComments();
   if (document.getElementById('page-checkins').classList.contains('active')) fetchCheckins();
+  if (document.getElementById('page-event').classList.contains('active'))    loadCurrentEvent();
   updatePTypeHint();
   updateProvHint();
   // re-render stat-line locale
@@ -367,15 +401,65 @@ function showPage(name, el) {
   el?.classList.add('active');
   if (name==='comments') fetchComments();
   if (name==='checkins') fetchCheckins();
+  if (name==='event')    loadCurrentEvent();
 }
 
 // Socket.io removed — updateStat() polls every 8s in init()
 
 // ── Init ──
 function init() {
-  loadQr(); fetchPolls(); loadSettings(); updateStat();
+  loadQr(); fetchPolls(); loadSettings(); updateStat(); loadCurrentEvent();
   setInterval(updateStat, 8000);
   setInterval(fetchPolls, 8000);
+}
+
+// ── Event Management ──
+async function loadCurrentEvent() {
+  try {
+    const ev = await fetch('/api/event/current').then(r => r.json());
+    document.getElementById('ev-name').textContent = ev.name || '—';
+    document.getElementById('ev-id').textContent   = ev.id   || '—';
+    document.getElementById('ev-date').textContent = ev.created_at
+      ? new Date(ev.created_at).toLocaleString(NX.lang === 'th' ? 'th-TH' : 'en-US', { dateStyle:'medium', timeStyle:'short' })
+      : '—';
+  } catch {}
+}
+
+async function startNewEvent() {
+  const name = document.getElementById('new-event-name').value.trim();
+  if (!name) {
+    document.getElementById('event-msg').style.color = 'var(--red)';
+    document.getElementById('event-msg').textContent = NX.lang === 'th' ? 'กรุณาระบุชื่องาน' : 'Please enter an event name';
+    return;
+  }
+  const confirm_msg = NX.lang === 'th'
+    ? `เริ่ม Event ใหม่: "${name}" ?\nข้อมูลเก่าจะยังคงอยู่ในระบบ แต่ Dashboard จะแสดงข้อมูลของ Event ใหม่`
+    : `Start new event: "${name}" ?\nOld data is preserved — Dashboard will show new event data.`;
+  if (!confirm(confirm_msg)) return;
+
+  const msgEl = document.getElementById('event-msg');
+  msgEl.style.color = 'var(--muted)';
+  msgEl.textContent = NX.lang === 'th' ? 'กำลังสร้าง...' : 'Creating...';
+
+  try {
+    const r = await fetch('/api/event/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+
+    document.getElementById('new-event-name').value = '';
+    msgEl.style.color = 'var(--green)';
+    msgEl.textContent = NX.lang === 'th' ? `✓ เริ่ม Event "${name}" แล้ว` : `✓ Started event "${name}"`;
+    setTimeout(() => { msgEl.textContent = ''; }, 3000);
+
+    // รีโหลดข้อมูลทั้งหมด
+    await Promise.all([loadCurrentEvent(), fetchPolls(), updateStat()]);
+  } catch (e) {
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = 'Error: ' + e.message;
+  }
 }
 
 async function updateStat() {

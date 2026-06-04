@@ -8,6 +8,7 @@ const pollRoutes    = require('./routes/poll');
 const commentRoutes = require('./routes/comment');
 const aiService     = require('./services/ai');
 const supabase      = require('./services/supabase');
+const { getCurrentEventId, getCurrentEvent } = require('./services/event');
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,40 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/poll',    pollRoutes);
 app.use('/api/comment', commentRoutes);
+
+// ── Event Management ─────────────────────────────────────────
+
+// GET /api/event/current — event ที่ active อยู่ตอนนี้
+app.get('/api/event/current', async (_req, res) => {
+  try {
+    const event = await getCurrentEvent();
+    res.json(event);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/event/new — สร้าง event ใหม่ + เซต current_event_id
+app.post('/api/event/new', async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim())
+    return res.status(400).json({ error: 'name required' });
+
+  // สร้าง ID จาก timestamp
+  const id = 'evt_' + Date.now();
+
+  const { error: insertErr } = await supabase
+    .from('events')
+    .insert({ id, name: name.trim() });
+  if (insertErr) return res.status(500).json({ error: insertErr.message });
+
+  // อัปเดต current_event_id
+  await supabase
+    .from('settings')
+    .upsert({ key: 'current_event_id', value: id }, { onConflict: 'key' });
+
+  res.json({ id, name: name.trim() });
+});
 
 // ── Config (public keys for frontend) ───────────────────────
 app.get('/api/config', (_req, res) => {
@@ -34,10 +69,12 @@ app.post('/api/ai/summary', async (req, res) => {
     if (!Array.isArray(comments) || !comments.length)
       return res.status(400).json({ error: 'comments array required' });
 
-    const result = await aiService.generateSummary(comments);
+    const result   = await aiService.generateSummary(comments);
+    const eventId  = await getCurrentEventId();
 
     // Map camelCase → snake_case for Supabase columns
     const dbRecord = {
+      event_id:            eventId,
       summary:             result.summary             || '',
       summary_th:          result.summaryTh           || '',
       summary_en:          result.summaryEn           || '',
@@ -48,8 +85,9 @@ app.post('/api/ai/summary', async (req, res) => {
       sentiment_breakdown: result.sentimentBreakdown  || {},
     };
 
+    // upsert per event — 1 summary ต่อ 1 event
     const { data: existing } = await supabase
-      .from('ai_summaries').select('id').limit(1).maybeSingle();
+      .from('ai_summaries').select('id').eq('event_id', eventId).maybeSingle();
     if (existing) {
       await supabase.from('ai_summaries').update(dbRecord).eq('id', existing.id);
     } else {
@@ -65,8 +103,11 @@ app.post('/api/ai/summary', async (req, res) => {
 
 // GET latest AI summary for dashboard polling (map snake_case → camelCase)
 app.get('/api/ai/latest', async (_req, res) => {
+  const eventId = await getCurrentEventId();
   const { data } = await supabase
-    .from('ai_summaries').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    .from('ai_summaries').select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!data) return res.json({});
   res.json({
     summary:            data.summary            || '',
@@ -135,22 +176,31 @@ app.post('/api/admin/login', (req, res) => {
 // ── Engagement Score ──────────────────────────────────────────
 app.get('/api/engagement', async (_req, res) => {
   try {
+    const eventId = await getCurrentEventId();
+
+    // ดึง poll_ids ของ event นี้ก่อน เพื่อ filter poll_responses
+    const { data: eventPolls } = await supabase
+      .from('polls').select('id').eq('event_id', eventId);
+    const pollIds = (eventPolls || []).map(p => p.id);
+
     const [
       { count: ci },
       { count: cm },
       { count: pos },
-      { data: responses },
+      responsesResult,
     ] = await Promise.all([
-      supabase.from('checkins').select('*', { count: 'exact', head: true }),
-      supabase.from('comments').select('*', { count: 'exact', head: true }),
-      supabase.from('comments').select('*', { count: 'exact', head: true }).eq('sentiment','positive'),
-      supabase.from('poll_responses').select('session_id'),
+      supabase.from('checkins').select('*', { count: 'exact', head: true }).eq('event_id', eventId),
+      supabase.from('comments').select('*', { count: 'exact', head: true }).eq('event_id', eventId),
+      supabase.from('comments').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('sentiment','positive'),
+      pollIds.length
+        ? supabase.from('poll_responses').select('session_id').in('poll_id', pollIds)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const checkins  = ci  || 0;
     const comments  = cm  || 0;
     const positive  = pos || 0;
-    const tv = new Set((responses||[]).map(r=>r.session_id)).size;
+    const tv = new Set((responsesResult.data||[]).map(r=>r.session_id)).size;
 
     const safeCI       = checkins || 1;
     const voteRatio    = Math.min(tv       / safeCI, 1);
@@ -168,26 +218,39 @@ app.get('/api/engagement', async (_req, res) => {
 // ── CSV Export ────────────────────────────────────────────────
 app.get('/api/export/csv', async (req, res) => {
   try {
-    const type = req.query.type || 'comments';
-    const escape = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+    const type    = req.query.type || 'comments';
+    const eventId = await getCurrentEventId();
+    const escape  = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
     let headers, rows = [], filename;
 
     if (type === 'comments') {
-      const { data } = await supabase.from('comments').select('*').order('created_at');
+      const { data } = await supabase.from('comments').select('*')
+        .eq('event_id', eventId).order('created_at');
       headers  = 'id,author,gender,rating,text,sentiment,timestamp';
       filename = 'nexus_comments.csv';
       rows = (data||[]).map(c =>
         [c.id, c.author, c.gender, c.rating||'', c.text, c.sentiment, c.created_at].map(escape).join(','));
 
     } else if (type === 'checkins') {
-      const { data } = await supabase.from('checkins').select('*').order('created_at');
+      const { data } = await supabase.from('checkins').select('*')
+        .eq('event_id', eventId).order('created_at');
       headers  = 'sessionId,name,timestamp';
       filename = 'nexus_checkins.csv';
       rows = (data||[]).map(c => [c.session_id, c.name, c.created_at].map(escape).join(','));
 
     } else if (type === 'votes') {
-      const { data } = await supabase
-        .from('poll_responses').select('*, polls(question)').order('created_at');
+      // ดึง poll_ids ของ event นี้ก่อน
+      const { data: eventPolls } = await supabase
+        .from('polls').select('id').eq('event_id', eventId);
+      const pollIds = (eventPolls || []).map(p => p.id);
+
+      const { data } = pollIds.length
+        ? await supabase.from('poll_responses')
+            .select('*, polls(question)')
+            .in('poll_id', pollIds)
+            .order('created_at')
+        : { data: [] };
+
       headers  = 'pollId,question,response,sessionId,timestamp';
       filename = 'nexus_votes.csv';
       rows = (data||[]).map(r => [

@@ -190,6 +190,16 @@
       hint_openai:     'ใช้ OpenAI API โดยตรง — GPT-4o, GPT-3.5 Turbo',
       hint_openrouter: 'รวม AI หลายเจ้าในคีย์เดียว (OpenAI, Anthropic, Google, Meta, Mistral)',
 
+      /* ── admin — event management ── */
+      nav_event:          'Event',
+      card_current_event: 'Event ที่กำลังดำเนินอยู่',
+      lbl_event_name:     'ชื่อ Event',
+      lbl_event_created:  'เริ่มเมื่อ',
+      event_note:         'ข้อมูล Check-in, Poll, Comment และ AI Summary จะแยกตาม Event — เปลี่ยน Event แล้วข้อมูลเก่าไม่หาย',
+      card_new_event:     'เริ่ม Event ใหม่',
+      new_event_desc:     'เมื่อสร้าง Event ใหม่ ระบบจะเปลี่ยน Context ทันที — ผู้เข้าร่วมจะเช็คอินได้ใหม่ Poll และ Comment จะเริ่มนับใหม่',
+      btn_new_event:      'เริ่ม Event ใหม่',
+
       /* ── admin — login ── */
       login_sub:     'Admin Panel',
       login_pw_ph:   'รหัสผ่าน',
@@ -373,6 +383,16 @@
       test_ok:         '✓ Test passed',
       hint_openai:     'Direct OpenAI API — GPT-4o, GPT-3.5 Turbo',
       hint_openrouter: 'Multiple AI providers in one key (OpenAI, Anthropic, Google, Meta, Mistral)',
+
+      /* ── admin — event management ── */
+      nav_event:          'Event',
+      card_current_event: 'Active Event',
+      lbl_event_name:     'Event Name',
+      lbl_event_created:  'Started',
+      event_note:         'Check-ins, Polls, Comments and AI Summary are scoped per Event — switching events preserves all historical data.',
+      card_new_event:     'Start New Event',
+      new_event_desc:     'Creating a new event switches the active context immediately — attendees can check in again and Polls/Comments start fresh.',
+      btn_new_event:      'Start New Event',
 
       /* ── admin — login ── */
       login_sub:     'Admin Panel',

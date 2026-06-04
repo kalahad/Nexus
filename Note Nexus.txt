@@ -3,6 +3,11 @@ Live Dashboard (projector)  https://nexus-delta-amber.vercel.app/dashboard.html
 Admin Panel: https://nexus-delta-amber.vercel.app/admin.html
 
 
+
+
+https://nexus-phkozs3zj-kalahads-projects.vercel.app/
+
+
 http://localhost:3000/admin.html
 รหัสผ่านเริ่มต้น: a-d-m-i-n-1-2-3-4 (del-)
 
