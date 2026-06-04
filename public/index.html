@@ -200,6 +200,36 @@
   </span>
 </div>
 
+<!-- datalist 77 จังหวัด — ใช้กับ poll type=text ที่มีคำว่า "จังหวัด" -->
+<datalist id="thai-provinces">
+  <option value="กรุงเทพมหานคร"/><option value="กระบี่"/><option value="กาญจนบุรี"/>
+  <option value="กาฬสินธุ์"/><option value="กำแพงเพชร"/><option value="ขอนแก่น"/>
+  <option value="จันทบุรี"/><option value="ฉะเชิงเทรา"/><option value="ชลบุรี"/>
+  <option value="ชัยนาท"/><option value="ชัยภูมิ"/><option value="ชุมพร"/>
+  <option value="เชียงราย"/><option value="เชียงใหม่"/><option value="ตรัง"/>
+  <option value="ตราด"/><option value="ตาก"/><option value="นครนายก"/>
+  <option value="นครปฐม"/><option value="นครพนม"/><option value="นครราชสีมา"/>
+  <option value="นครศรีธรรมราช"/><option value="นครสวรรค์"/><option value="นนทบุรี"/>
+  <option value="นราธิวาส"/><option value="น่าน"/><option value="บึงกาฬ"/>
+  <option value="บุรีรัมย์"/><option value="ปทุมธานี"/><option value="ประจวบคีรีขันธ์"/>
+  <option value="ปราจีนบุรี"/><option value="ปัตตานี"/><option value="พระนครศรีอยุธยา"/>
+  <option value="พะเยา"/><option value="พังงา"/><option value="พัทลุง"/>
+  <option value="พิจิตร"/><option value="พิษณุโลก"/><option value="เพชรบุรี"/>
+  <option value="เพชรบูรณ์"/><option value="แพร่"/><option value="พระนครศรีอยุธยา"/>
+  <option value="ภูเก็ต"/><option value="มหาสารคาม"/><option value="มุกดาหาร"/>
+  <option value="แม่ฮ่องสอน"/><option value="ยโสธร"/><option value="ยะลา"/>
+  <option value="ร้อยเอ็ด"/><option value="ระนอง"/><option value="ระยอง"/>
+  <option value="ราชบุรี"/><option value="ลพบุรี"/><option value="ลำปาง"/>
+  <option value="ลำพูน"/><option value="เลย"/><option value="ศรีสะเกษ"/>
+  <option value="สกลนคร"/><option value="สงขลา"/><option value="สตูล"/>
+  <option value="สมุทรปราการ"/><option value="สมุทรสงคราม"/><option value="สมุทรสาคร"/>
+  <option value="สระแก้ว"/><option value="สระบุรี"/><option value="สิงห์บุรี"/>
+  <option value="สุโขทัย"/><option value="สุพรรณบุรี"/><option value="สุราษฎร์ธานี"/>
+  <option value="สุรินทร์"/><option value="หนองคาย"/><option value="หนองบัวลำภู"/>
+  <option value="อ่างทอง"/><option value="อำนาจเจริญ"/><option value="อุดรธานี"/>
+  <option value="อุตรดิตถ์"/><option value="อุทัยธานี"/><option value="อุบลราชธานี"/>
+</datalist>
+
 <script src="/js/nexus-ui.js"></script>
 <script>
 // ── State ──
@@ -267,22 +297,17 @@ function showPost() {
 
 // ── Polls ──
 async function fetchPolls() {
-  // Save text inputs & focused element before re-render (prevents clearing while typing)
-  const savedInputs = {};
-  document.querySelectorAll('[id^="ta-"]').forEach(i => { if (i.value) savedInputs[i.id] = i.value; });
-  const focusedId = document.activeElement?.id;
-
   const polls = await fetch('/api/poll').then(r=>r.json()).catch(()=>[]);
   const active = polls.filter(p=>p.active);
   const el = document.getElementById('poll-container');
   if (!active.length) { el.innerHTML=`<p style="color:var(--muted);font-size:.84rem">${NX.t('poll_wait')}</p>`; return; }
-  el.innerHTML = active.map(renderPoll).join('');
 
-  // Restore text inputs and refocus
-  Object.entries(savedInputs).forEach(([id, val]) => {
-    const inp = document.getElementById(id);
-    if (inp) { inp.value = val; if (id === focusedId) { inp.focus(); inp.setSelectionRange(val.length, val.length); } }
-  });
+  // ถ้า user กำลัง focus อยู่ที่ช่องพิมพ์ poll (ta-xxx) → skip re-render รอบนี้
+  // ป้องกัน Thai IME composition ถูกตัดกลางคัน
+  const focused = document.activeElement;
+  if (focused && focused.id && focused.id.startsWith('ta-')) return;
+
+  el.innerHTML = active.map(renderPoll).join('');
 }
 
 function renderPoll(p) {
@@ -299,10 +324,13 @@ function renderPoll(p) {
     </div>`;
   }
   if (p.type==='text') {
+    // ถ้าคำถามมีคำว่า "จังหวัด" หรือ "province" → แนบ datalist 77 จังหวัด
+    const useProvince = /จังหวัด|province/i.test(p.question);
+    const listAttr    = useProvince ? `list="thai-provinces"` : '';
     return `<div class="poll-blk">
       <p class="poll-q">${p.question}<span class="nx-tag nx-tag-t">Word Cloud</span></p>
       ${done?`<p style="color:var(--green);font-size:.84rem">${NX.t('answered_done')}</p>`:
-        `<div class="text-ans-row"><input type="text" id="ta-${p.id}" placeholder="${NX.t('text_ph')}" style="font-size:.84rem"/>
+        `<div class="text-ans-row"><input type="text" id="ta-${p.id}" ${listAttr} placeholder="${NX.t('text_ph')}" style="font-size:.84rem" autocomplete="off"/>
          <button class="btn btn-cyan btn-sm" onclick="submitAnswer('${p.id}')">${NX.t('submit_text')}</button></div>`}
       <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${p.voterCount} ${NX.t('responders')}</p>
     </div>`;
