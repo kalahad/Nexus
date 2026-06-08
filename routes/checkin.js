@@ -49,8 +49,8 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/checkin
-router.get('/', async (_req, res) => {
-  const eventId = await getCurrentEventId();
+router.get('/', async (req, res) => {
+  const eventId = req.query.event_id || await getCurrentEventId();
   const { data, count, error } = await supabase
     .from('checkins')
     .select('*', { count: 'exact' })

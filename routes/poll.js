@@ -97,8 +97,8 @@ router.post('/', async (req, res) => {
 });
 
 // ── GET /api/poll ─────────────────────────────────────────────
-router.get('/', async (_req, res) => {
-  const eventId = await getCurrentEventId();
+router.get('/', async (req, res) => {
+  const eventId = req.query.event_id || await getCurrentEventId();
   const [{ data: polls }, { data: allResponses }] = await Promise.all([
     supabase.from('polls').select('*').eq('event_id', eventId).order('created_at'),
     supabase.from('poll_responses').select('*'),

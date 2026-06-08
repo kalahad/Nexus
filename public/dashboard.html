@@ -36,21 +36,57 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 #clock{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* ── Stats row ── */
-.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;padding:1.25rem 2rem;flex-shrink:0}
-.stat{backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:1rem 1.1rem;transition:var(--trans)}
-.stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem}
-.stat-val{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
+.stats-row{display:grid;grid-template-columns:1.25fr repeat(4,1fr);gap:.85rem;padding:.85rem 2rem;flex-shrink:0}
+/* เลย์เอาต์การ์ดสถิติ — จัดเป็นแนวตั้ง (label บน, ตัวเลขล่าง) และวาง icon เป็น badge มุมขวาบน
+   เพื่อไม่ให้ icon ทับกับตัวเลขซึ่งอยู่คนละตำแหน่งกันอย่างชัดเจน */
+.stat{position:relative;backdrop-filter:blur(16px);background:var(--glass);border:1px solid var(--border);border-radius:13px;
+  padding:.7rem 1rem;transition:var(--trans);display:flex;flex-direction:column;justify-content:center;gap:.3rem;min-height:0}
+.stat:hover{border-color:var(--cyan);transform:translateY(-1px)}
+
+/* Icon badge — มุมขวาบนของทุกการ์ด ไม่ชนกับเนื้อหาหลัก */
+.stat-icon{
+  position:absolute;top:.65rem;right:.65rem;width:30px;height:30px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;
+}
+.stat-icon.ic-violet{background:rgba(124,58,237,.14);color:var(--violet)}
+.stat-icon.ic-amber {background:rgba(245,158,11,.14); color:var(--amber)}
+.stat-icon.ic-green {background:rgba(16,185,129,.14); color:var(--green)}
+.stat-icon.ic-blue  {background:rgba(59,130,246,.14); color:var(--blue)}
+
+/* การ์ด "ผู้เข้าร่วม" — ให้เป็น hero card เด่นกว่าการ์ดอื่น อ่านง่ายทั้ง light/dark mode
+   ใช้พื้นหลังไล่สี cyan→violet (ปรับเฉดอัตโนมัติตามธีมผ่าน CSS variables) + ตัวอักษรขาวคงที่ */
+.stat-hero{
+  background:linear-gradient(135deg,var(--cyan),var(--violet)) !important;
+  border:1px solid transparent !important;color:#fff !important;overflow:hidden;
+  padding:.85rem 1.1rem !important;backdrop-filter:none;
+}
+.stat-hero .stat-lbl{color:rgba(255,255,255,.85) !important;font-weight:600;letter-spacing:.1em}
+.stat-hero .stat-val{
+  color:#fff !important;background:none !important;-webkit-background-clip:initial !important;
+  -webkit-text-fill-color:#fff !important;font-size:1.9rem !important;
+}
+.stat-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(140px 90px at 92% 115%, rgba(255,255,255,.22), transparent 70%);
+  pointer-events:none;
+}
+.stat-hero .stat-icon{background:rgba(255,255,255,.2);color:#fff}
+.stat-hero:hover{box-shadow:0 12px 30px -8px rgba(0,180,216,.55);transform:translateY(-2px)}
+@media(max-width:1100px){.stat-hero{grid-column:span 1}}
+.stat-lbl{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;line-height:1.3;
+  max-width:calc(100% - 38px)}
+.stat-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;white-space:nowrap}
 .grad-cyan  {background:linear-gradient(135deg,var(--cyan),#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .grad-violet{background:linear-gradient(135deg,var(--violet),#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .grad-amber {background:linear-gradient(135deg,var(--amber),#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .grad-green {background:linear-gradient(135deg,var(--green),#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 
 /* ── Engagement Score ── */
-.eng-ring{position:relative;display:flex;align-items:center;justify-content:center}
+.eng-ring{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .eng-ring canvas{transform:rotate(-90deg)}
-.eng-center{position:absolute;text-align:center}
-.eng-num{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--cyan)}
-.eng-sub{font-size:.6rem;color:var(--muted)}
+.eng-center{position:absolute;text-align:center;line-height:1}
+.eng-num{font-family:'Syne',sans-serif;font-size:.92rem;font-weight:800;color:var(--cyan)}
+.eng-sub{font-size:.52rem;color:var(--muted)}
 
 /* ── Tabs ── */
 .tab-bar{display:flex;padding:0 2rem;border-bottom:1px solid var(--border);flex-shrink:0;backdrop-filter:blur(12px);background:var(--nav-bg);transition:var(--trans)}
@@ -106,7 +142,31 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 .kpi-lbl{font-size:.66rem;color:var(--muted);text-transform:uppercase;margin-top:.2rem}
 
 /* ── Live Comment Stream ── */
-#comment-stream{max-height:300px;overflow:hidden;display:flex;flex-direction:column;gap:.5rem}
+/* ── Comment grid (card grid) — สีสื่อความหมาย อ่านง่าย ไม่ลายตา ── */
+.cm-grid-wrap{max-height:560px;overflow-y:auto;padding:.1rem .25rem .1rem 0}
+.cm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.7rem}
+.cm-card{position:relative;background:var(--glass);border:1px solid var(--border);border-radius:12px;
+  padding:.9rem 1rem .8rem 1.05rem;display:flex;flex-direction:column;gap:.55rem;
+  border-left:3px solid var(--border);animation:fadeUp .3s ease;transition:var(--trans),transform .15s ease,box-shadow .15s ease}
+.cm-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(0,0,0,.18)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+/* โทนสีตาม sentiment — ใช้เส้นขอบซ้ายเป็นตัวนำสายตาหลัก แทนจุดสีหลายจุดที่ทำให้ลายตา */
+.cm-card.sent-positive{border-left-color:var(--green)}
+.cm-card.sent-negative{border-left-color:var(--red)}
+.cm-card.sent-neutral {border-left-color:var(--blue)}
+.cm-card-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.cm-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:1rem;background:rgba(255,255,255,.06);border:1px solid var(--border)}
+.cm-card-author{font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cm-card-text{font-size:.86rem;color:var(--sub);line-height:1.55;flex:1;min-height:1.55em;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.cm-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  padding-top:.5rem;border-top:1px solid var(--border);font-size:.68rem}
+.cm-card-time{color:var(--muted);white-space:nowrap}
+.cm-sent-tag{font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.cm-sent-tag.sp{color:var(--green)} .cm-sent-tag.sn{color:var(--red)} .cm-sent-tag.st{color:var(--blue)}
+.cm-stars{color:var(--amber);font-size:.7rem;letter-spacing:1px;white-space:nowrap}
+.cm-stars .empty{color:var(--border)}
 .cs-item{display:flex;gap:.65rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid var(--border);animation:slideIn .4s ease;transition:var(--trans)}
 .cs-item:last-child{border-bottom:none}
 @keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
@@ -157,14 +217,31 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 
 <!-- Stats -->
 <div class="stats-row">
-  <div class="stat"><div class="stat-lbl" data-i18n="stat_checkin">ผู้เข้าร่วม</div><div class="stat-val grad-cyan" id="s-ci">0</div></div>
-  <div class="stat"><div class="stat-lbl" data-i18n="stat_votes">โหวต / ตอบ</div><div class="stat-val grad-violet" id="s-votes">0</div></div>
-  <div class="stat"><div class="stat-lbl" data-i18n="stat_comments">ความคิดเห็น</div><div class="stat-val grad-amber" id="s-cm">0</div></div>
-  <div class="stat"><div class="stat-lbl" data-i18n="stat_positive">Positive</div><div class="stat-val grad-green" id="s-pos">0%</div></div>
+  <div class="stat stat-hero">
+    <span class="stat-icon">👥</span>
+    <div class="stat-lbl" data-i18n="stat_checkin">ผู้เข้าร่วม</div>
+    <div class="stat-val" id="s-ci">0</div>
+  </div>
   <div class="stat">
+    <span class="stat-icon ic-violet">🗳️</span>
+    <div class="stat-lbl" data-i18n="stat_votes">โหวต / ตอบ</div>
+    <div class="stat-val grad-violet" id="s-votes">0</div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon ic-amber">💬</span>
+    <div class="stat-lbl" data-i18n="stat_comments">ความคิดเห็น</div>
+    <div class="stat-val grad-amber" id="s-cm">0</div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon ic-green">😊</span>
+    <div class="stat-lbl" data-i18n="stat_positive">Positive</div>
+    <div class="stat-val grad-green" id="s-pos">0%</div>
+  </div>
+  <div class="stat">
+    <span class="stat-icon ic-blue">⚡</span>
     <div class="stat-lbl" data-i18n="stat_engage">Engagement</div>
-    <div class="eng-ring" style="margin-top:.2rem">
-      <canvas id="eng-ring" width="70" height="70"></canvas>
+    <div class="eng-ring" style="align-self:flex-start;margin-top:.15rem">
+      <canvas id="eng-ring" width="46" height="46"></canvas>
       <div class="eng-center"><div class="eng-num" id="s-eng">0</div><div class="eng-sub">/ 100</div></div>
     </div>
   </div>
@@ -174,6 +251,18 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 <div class="tab-bar">
   <button class="tab-btn active" onclick="swTab('poll',this)" data-i18n="tab_poll">Poll & Word Cloud</button>
   <button class="tab-btn" onclick="swTab('comment',this)" data-i18n="tab_comment">ความคิดเห็น</button>
+</div>
+
+<!-- Event picker — เลือกดูข้อมูล Poll และ Comment ของ Event ใดก็ได้แบบชั่วคราว (ใช้ร่วมกันทั้งสองแท็บ) -->
+<div style="padding:.85rem 2rem 0">
+  <div class="card" style="display:flex;align-items:center;gap:.85rem;flex-wrap:wrap">
+    <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em">
+      <span data-i18n="lbl_viewing_event">กำลังแสดงข้อมูลของ Event</span>:
+      <strong id="dash-event-name" style="color:var(--cyan);text-transform:none;letter-spacing:0;font-size:.92rem;margin-left:.3rem">—</strong>
+    </div>
+    <select id="dash-event-select" style="margin-left:auto;min-width:220px;font-size:.8rem"></select>
+    <button class="icon-btn" id="dash-event-reset" style="display:none" onclick="resetDashEvent()">↺ <span data-i18n="btn_back_current">ปัจจุบัน</span></button>
+  </div>
 </div>
 
 <!-- ══ TAB: POLL ══ -->
@@ -239,13 +328,16 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
     <div id="ai-box" data-i18n="ai_placeholder">กด "Generate Summary" ในหน้า Admin เพื่อสร้างสรุปอัตโนมัติ</div>
   </div>
 
-  <!-- Live comment stream -->
+  <!-- Live comment stream (card grid view) -->
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between">
       <span data-i18n="card_stream">Live Comment Stream</span>
       <span id="cm-count" style="color:var(--cyan);font-size:.82rem">0</span>
     </div>
-    <div id="comment-stream"></div>
+    <div class="cm-grid-wrap">
+      <div class="cm-grid" id="comment-stream"></div>
+      <p id="cm-empty" style="color:var(--muted);font-size:.85rem;display:none;padding:1rem 0;text-align:center" data-i18n="stream_empty">ยังไม่มีความคิดเห็น</p>
+    </div>
   </div>
 </div>
 </div><!-- .page -->
@@ -256,6 +348,7 @@ header{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);background:
 window.onLangChange = function() {
   fetchPolls();
   fetchComments();
+  populateDashEvents();
   // Only reset ai-box placeholder if AI content hasn't been loaded yet
   // (data-i18n is removed by renderAI once real content is set)
   const aiBox = document.getElementById('ai-box');
@@ -317,9 +410,20 @@ async function fetchCheckinCount() {
 }
 
 // ── AI Summary polling ──
+// ดึงสรุป AI ของ Event ที่กำลังแสดงอยู่ (ปัจจุบัน หรือ Event เก่าที่เลือกดูย้อนหลัง)
 async function fetchAISummary() {
-  const d = await fetch('/api/ai/latest').then(r=>r.json()).catch(()=>null);
+  const qs = viewEventId ? `?event_id=${encodeURIComponent(viewEventId)}` : '';
+  const d  = await fetch('/api/ai/latest'+qs).then(r=>r.json()).catch(()=>null);
   if (d?.summary) renderAI(d);
+  else clearAI();
+}
+
+// ล้างกล่องสรุป AI กลับเป็นข้อความ placeholder — ใช้เมื่อ Event ที่เลือกยังไม่มีสรุป AI
+function clearAI() {
+  const aiBox = document.getElementById('ai-box');
+  if (!aiBox || aiBox.dataset.i18n) return; // ยังเป็น placeholder อยู่แล้ว ไม่ต้องทำซ้ำ
+  aiBox.dataset.i18n = 'ai_placeholder';
+  aiBox.textContent  = NX.t('ai_placeholder');
 }
 
 // ── QR ──
@@ -333,7 +437,8 @@ let allPolls = [];
 let selTextPoll = null;
 
 async function fetchPolls() {
-  allPolls = await fetch('/api/poll').then(r=>r.json());
+  const qs = viewEventId ? `?event_id=${encodeURIComponent(viewEventId)}` : '';
+  allPolls = await fetch('/api/poll'+qs).then(r=>r.json());
   const total = allPolls.reduce((s,p) => s + p.totalVotes, 0);
   document.getElementById('s-votes').textContent = total;
   renderPollResults();
@@ -341,12 +446,16 @@ async function fetchPolls() {
 }
 
 function renderPollResults() {
-  const el  = document.getElementById('poll-results');
-  const act = allPolls.filter(p => p.active);
+  const el = document.getElementById('poll-results');
+  // เมื่อกำลังดู Event ย้อนหลัง ให้แสดงผลของ Poll ทุกข้อ (รวมที่ปิดไปแล้ว) ไม่ใช่เฉพาะที่ active อยู่
+  const act = viewEventId ? allPolls.slice() : allPolls.filter(p => p.active);
   if (!act.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.85rem">${NX.t('no_poll')}</p>`; return; }
   el.innerHTML = act.map(p => {
+    const closedTag = !p.active
+      ? `<span class="type-badge" style="background:rgba(148,163,184,.18);color:var(--muted)">${NX.lang==='th'?'ปิดแล้ว':'Closed'}</span>`
+      : '';
     if (p.type === 'choice') {
-      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tc">${NX.t('tag_choice')}</span></p>
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tc">${NX.t('tag_choice')}</span>${closedTag}</p>
         ${(p.options||[]).map(o => {
           const pct = p.totalVotes ? Math.round(o.votes/p.totalVotes*100) : 0;
           return `<div class="bar-row"><div class="bar-lbl" title="${o.text}">${o.text}</div>
@@ -359,7 +468,7 @@ function renderPollResults() {
       const counts = p.ratingCounts||{1:0,2:0,3:0,4:0,5:0};
       const total  = Object.values(counts).reduce((s,v)=>s+v,0);
       const maxC   = Math.max(...Object.values(counts),1);
-      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tr">Rating</span></p>
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tr">Rating</span>${closedTag}</p>
         ${p.average ? `<div class="r-avg">${p.average} ★</div>` : ''}
         ${[5,4,3,2,1].map(v=>`<div class="bar-row">
           <div class="bar-lbl">${v} ★</div>
@@ -368,7 +477,7 @@ function renderPollResults() {
         <p style="font-size:.73rem;color:var(--muted)">${total} ${NX.t('raters')}</p></div>`;
     }
     if (p.type === 'text') {
-      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tt">${NX.t('tag_wc')}</span></p>
+      return `<div class="poll-blk"><p class="poll-q">${p.question}<span class="type-badge tt">${NX.t('tag_wc')}</span>${closedTag}</p>
         <p style="font-size:.8rem;color:var(--muted)">${p.voterCount} ${NX.t('responders')}</p></div>`;
     }
     return '';
@@ -376,7 +485,7 @@ function renderPollResults() {
 }
 
 function renderWcSelector() {
-  const tp  = allPolls.filter(p => p.type === 'text' && p.active);
+  const tp  = allPolls.filter(p => p.type === 'text' && (p.active || viewEventId));
   const btns = document.getElementById('wc-btns');
   btns.innerHTML = tp.map(p =>
     `<button class="wc-sel-btn${p.id===selTextPoll?' active':''}" onclick="pickWc('${p.id}')">${p.question}</button>`
@@ -434,8 +543,64 @@ async function drawWordCloud(pollId) {
 // ── Comments ──
 let comments = [];
 
+// viewEventId = null → กำลังแสดง Event ปัจจุบัน (live); ถ้าตั้งค่า → แสดงข้อมูลของ Event นั้นแบบชั่วคราว
+let viewEventId   = null;
+let currentEvent  = null;
+
+async function populateDashEvents() {
+  const sel = document.getElementById('dash-event-select');
+  try {
+    const [events, cur] = await Promise.all([
+      fetch('/api/event/list').then(r => r.json()),
+      fetch('/api/event/current').then(r => r.json()),
+    ]);
+    currentEvent = cur || null;
+    const curLabel = NX.lang === 'th' ? 'ปัจจุบัน' : 'Current';
+    const opts = [`<option value="">— ${curLabel}${cur && cur.name ? ` (${cur.name})` : ''} —</option>`];
+    (Array.isArray(events) ? events : []).forEach(ev => {
+      if (cur && ev.id === cur.id) return; // ไม่ต้องซ้ำกับตัวเลือก "ปัจจุบัน"
+      opts.push(`<option value="${ev.id}">${ev.name || ev.id}</option>`);
+    });
+    sel.innerHTML = opts.join('');
+    sel.value = viewEventId || '';
+    updateDashEventLabel();
+  } catch {}
+}
+
+function updateDashEventLabel() {
+  const nameEl = document.getElementById('dash-event-name');
+  const resetBtn = document.getElementById('dash-event-reset');
+  if (!viewEventId) {
+    nameEl.textContent = (currentEvent && currentEvent.name) || (NX.lang==='th' ? 'ปัจจุบัน' : 'Current');
+    resetBtn.style.display = 'none';
+  } else {
+    const sel = document.getElementById('dash-event-select');
+    const opt = sel.querySelector(`option[value="${viewEventId}"]`);
+    nameEl.textContent = (opt ? opt.textContent : viewEventId) + (NX.lang === 'th' ? ' (ดูย้อนหลัง)' : ' (archived view)');
+    resetBtn.style.display = '';
+  }
+}
+
+document.getElementById('dash-event-select').addEventListener('change', e => {
+  viewEventId = e.target.value || null;
+  updateDashEventLabel();
+  fetchComments();
+  fetchPolls();
+  fetchAISummary();
+});
+
+function resetDashEvent() {
+  viewEventId = null;
+  document.getElementById('dash-event-select').value = '';
+  updateDashEventLabel();
+  fetchComments();
+  fetchPolls();
+  fetchAISummary();
+}
+
 async function fetchComments() {
-  const data = await fetch('/api/comment').then(r=>r.json());
+  const qs   = viewEventId ? `?event_id=${encodeURIComponent(viewEventId)}` : '';
+  const data = await fetch('/api/comment'+qs).then(r=>r.json());
   comments = data.comments || [];
   document.getElementById('s-cm').textContent       = data.total||0;
   document.getElementById('cm-count').textContent   = (data.total||0)+' '+(NX.lang==='th'?'รายการ':'items');
@@ -456,29 +621,43 @@ function updateComments(data) {
   if (data.comment) prependComment(data.comment);
 }
 
+const CM_VISIBLE = 60; // จำนวนการ์ดสูงสุดที่แสดงในกริด (มากกว่ารูปแบบ list เดิมที่เห็นแค่ ~5 รายการ)
+
 function renderStream() {
-  const el = document.getElementById('comment-stream');
-  if (!comments.length) { el.innerHTML=`<p style="color:var(--muted);font-size:.85rem">${NX.t('stream_empty')}</p>`; return; }
-  el.innerHTML = comments.slice(0,30).map(c => commentHtml(c)).join('');
+  const el  = document.getElementById('comment-stream');
+  const emp = document.getElementById('cm-empty');
+  if (!comments.length) { el.innerHTML=''; emp.style.display='block'; return; }
+  emp.style.display = 'none';
+  el.innerHTML = comments.slice(0, CM_VISIBLE).map(c => commentCard(c)).join('');
 }
 function prependComment(c) {
   const el  = document.getElementById('comment-stream');
-  const div = document.createElement('div');
-  div.innerHTML = commentHtml(c);
-  el.prepend(div.firstElementChild);
-  while (el.children.length > 30) el.lastElementChild.remove();
+  document.getElementById('cm-empty').style.display = 'none';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = commentCard(c);
+  el.prepend(tmp.firstElementChild);
+  while (el.children.length > CM_VISIBLE) el.lastElementChild.remove();
 }
 const gIcon = {male:'👨',female:'👩',nonbinary:'🌈',unspecified:'🤫'};
-function commentHtml(c) {
-  const dc = c.sentiment==='positive'?'dp':c.sentiment==='negative'?'dn':'dnt';
-  const stars = c.rating ? '★'.repeat(c.rating) : '';
-  return `<div class="cs-item">
-    <div class="cs-dot ${dc}"></div>
-    <div class="cs-body">
-      <div class="cs-author"><span class="gi">${gIcon[c.gender]||''}</span> ${c.author||'Anonymous'} ${stars?`<span style="color:var(--amber);font-size:.75rem">${stars}</span>`:''}
-      </div>
-      <div class="cs-text">${c.text}</div>
-      <div class="cs-meta">${new Date(c.timestamp).toLocaleTimeString(NX.lang==='th'?'th-TH':'en-US',{hour:'2-digit',minute:'2-digit'})}</div>
+const sentLabel = { positive: {th:'เชิงบวก', en:'Positive'}, negative: {th:'เชิงลบ', en:'Negative'}, neutral: {th:'เป็นกลาง', en:'Neutral'} };
+function commentCard(c) {
+  // โทนสียึดตาม sentiment เดียว (ขอบซ้าย + ป้ายข้อความ) ลดจำนวนสีที่แข่งกันในการ์ดเดียว
+  const sentClass = c.sentiment==='positive'?'sent-positive':c.sentiment==='negative'?'sent-negative':'sent-neutral';
+  const tagClass  = c.sentiment==='positive'?'sp':c.sentiment==='negative'?'sn':'st';
+  const sl    = sentLabel[c.sentiment] || sentLabel.neutral;
+  const stars = c.rating
+    ? `<span class="cm-stars">${'★'.repeat(c.rating)}<span class="empty">${'★'.repeat(5-c.rating)}</span></span>`
+    : '';
+  return `<div class="cm-card ${sentClass}">
+    <div class="cm-card-top">
+      <span class="cm-avatar">${gIcon[c.gender]||'🙂'}</span>
+      <span class="cm-card-author" style="flex:1">${c.author||'Anonymous'}</span>
+      ${stars}
+    </div>
+    <div class="cm-card-text">${c.text}</div>
+    <div class="cm-card-bottom">
+      <span class="cm-sent-tag ${tagClass}">${NX.lang==='th'?sl.th:sl.en}</span>
+      <span class="cm-card-time">${new Date(c.timestamp).toLocaleString(NX.lang==='th'?'th-TH':'en-US',{dateStyle:'short',timeStyle:'short'})}</span>
     </div>
   </div>`;
 }
@@ -545,6 +724,10 @@ fetchPolls();
 fetchComments();
 fetchEngagement();
 fetchAISummary();
+populateDashEvents();
+
+// รีเฟรชรายการ Event เป็นระยะ (เผื่อมีการเริ่ม Event ใหม่จากฝั่ง Admin)
+setInterval(() => { if (!viewEventId) populateDashEvents(); }, 30000);
 
 setInterval(fetchCheckinCount, 4000);
 setInterval(fetchPolls,        4000);

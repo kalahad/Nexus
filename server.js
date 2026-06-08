@@ -32,6 +32,20 @@ app.get('/api/event/current', async (_req, res) => {
   }
 });
 
+// GET /api/event/list — รายการ event ทั้งหมด (ใหม่ → เก่า) สำหรับดูข้อมูลย้อนหลัง
+app.get('/api/event/list', async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/event/new — สร้าง event ใหม่ + เซต current_event_id
 app.post('/api/event/new', async (req, res) => {
   const { name } = req.body;
@@ -65,12 +79,13 @@ app.get('/api/config', (_req, res) => {
 // ── AI Summary ───────────────────────────────────────────────
 app.post('/api/ai/summary', async (req, res) => {
   try {
-    const { comments } = req.body;
+    const { comments, eventId: bodyEventId } = req.body;
     if (!Array.isArray(comments) || !comments.length)
       return res.status(400).json({ error: 'comments array required' });
 
     const result   = await aiService.generateSummary(comments);
-    const eventId  = await getCurrentEventId();
+    // ใช้ event ที่ระบุมา (สำหรับวิเคราะห์ event เก่า) หากไม่ระบุ ใช้ event ปัจจุบันเป็นค่าเริ่มต้น
+    const eventId  = bodyEventId || await getCurrentEventId();
 
     // Map camelCase → snake_case for Supabase columns
     const dbRecord = {
@@ -102,8 +117,8 @@ app.post('/api/ai/summary', async (req, res) => {
 });
 
 // GET latest AI summary for dashboard polling (map snake_case → camelCase)
-app.get('/api/ai/latest', async (_req, res) => {
-  const eventId = await getCurrentEventId();
+app.get('/api/ai/latest', async (req, res) => {
+  const eventId = req.query.event_id || await getCurrentEventId();
   const { data } = await supabase
     .from('ai_summaries').select('*')
     .eq('event_id', eventId)
@@ -174,9 +189,9 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // ── Engagement Score ──────────────────────────────────────────
-app.get('/api/engagement', async (_req, res) => {
+app.get('/api/engagement', async (req, res) => {
   try {
-    const eventId = await getCurrentEventId();
+    const eventId = req.query.event_id || await getCurrentEventId();
 
     // ดึง poll_ids ของ event นี้ก่อน เพื่อ filter poll_responses
     const { data: eventPolls } = await supabase
@@ -219,7 +234,7 @@ app.get('/api/engagement', async (_req, res) => {
 app.get('/api/export/csv', async (req, res) => {
   try {
     const type    = req.query.type || 'comments';
-    const eventId = await getCurrentEventId();
+    const eventId = req.query.event_id || await getCurrentEventId();
     const escape  = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
     let headers, rows = [], filename;
 
@@ -258,6 +273,38 @@ app.get('/api/export/csv', async (req, res) => {
         r.answer || (r.option_index !== null ? `option_${r.option_index}` : '') || (r.rating ? `rating_${r.rating}` : ''),
         r.session_id, r.created_at,
       ].map(escape).join(','));
+
+    } else if (type === 'polls') {
+      // สรุปผล Poll แต่ละข้อของ event นี้ (คำถาม, ประเภท, ผลสรุป, จำนวนผู้โหวต)
+      const [{ data: polls }, { data: allResponses }] = await Promise.all([
+        supabase.from('polls').select('*').eq('event_id', eventId).order('created_at'),
+        supabase.from('poll_responses').select('*'),
+      ]);
+      const byPoll = {};
+      (allResponses || []).forEach(r => { (byPoll[r.poll_id] = byPoll[r.poll_id] || []).push(r); });
+
+      headers  = 'pollId,question,type,active,totalVotes,uniqueVoters,resultSummary,createdAt';
+      filename = 'nexus_polls.csv';
+      rows = (polls||[]).map(p => {
+        const responses = byPoll[p.id] || [];
+        const voters    = new Set(responses.map(r => r.session_id)).size;
+        let summary = '';
+        if (p.type === 'choice') {
+          const opts = p.options || [];
+          const counts = {};
+          responses.forEach(r => { if (r.option_index != null) counts[r.option_index] = (counts[r.option_index]||0)+1; });
+          summary = opts.map((o,i) => `${o.text||o}: ${counts[i]||0}`).join(' | ');
+        } else if (p.type === 'rating') {
+          const sum = responses.reduce((s,r) => s + (r.rating||0), 0);
+          summary = responses.length ? `avg ${(sum/responses.length).toFixed(1)} / 5 (n=${responses.length})` : 'no ratings';
+        } else if (p.type === 'text') {
+          summary = `${responses.filter(r=>r.answer).length} text answers`;
+        }
+        return [
+          p.id, p.question, p.type, p.active ? 'yes' : 'no',
+          responses.length, voters, summary, p.created_at,
+        ].map(escape).join(',');
+      });
     }
 
     const csv = [headers, ...rows].join('\n');

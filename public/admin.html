@@ -203,6 +203,7 @@ tr:hover td{background:var(--input-bg)}
       <a href="/api/export/csv?type=comments"  class="btn btn-ghost" data-i18n="btn_export_comments">📥 Comments CSV</a>
       <a href="/api/export/csv?type=checkins"  class="btn btn-ghost" data-i18n="btn_export_checkins">📥 Check-ins CSV</a>
       <a href="/api/export/csv?type=votes"     class="btn btn-ghost" data-i18n="btn_export_votes">📥 Votes CSV</a>
+      <a href="/api/export/csv?type=polls"     class="btn btn-ghost" id="btn-export-polls" data-i18n="btn_export_polls">📥 Polls CSV</a>
     </div>
   </div>
 </div>
@@ -236,6 +237,32 @@ tr:hover td{background:var(--input-bg)}
       <button class="btn btn-cyan" onclick="startNewEvent()" data-i18n="btn_new_event">เริ่ม Event ใหม่</button>
     </div>
     <p id="event-msg" style="font-size:.78rem;min-height:1.1rem;margin-top:.35rem"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-title" id="archive-title">ดูข้อมูล Event ย้อนหลัง</div>
+    <p id="archive-desc" style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">เลือก Event จากรายการเพื่อดูสถิติ Check-in, Comment, Poll และสรุปผล AI ของ Event นั้น — การดูข้อมูลย้อนหลังจะไม่เปลี่ยน Event ที่กำลังดำเนินอยู่</p>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <select id="archive-event-select" style="flex:1;min-width:220px"></select>
+      <button class="btn btn-cyan" id="archive-load-btn" onclick="loadArchiveEvent()">ดูข้อมูล</button>
+    </div>
+    <p id="archive-msg" style="font-size:.78rem;min-height:1.1rem;margin:.1rem 0 .5rem;color:var(--muted)"></p>
+
+    <div id="archive-result" style="display:none">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;text-align:center;margin-bottom:1.1rem">
+        <div><div style="font-size:1.6rem;font-weight:800;color:var(--cyan);font-family:'Syne',sans-serif" id="ar-checkins">0</div><div style="font-size:.66rem;color:var(--muted);margin-top:.2rem">CHECK-INS</div></div>
+        <div><div style="font-size:1.6rem;font-weight:800;color:var(--amber);font-family:'Syne',sans-serif" id="ar-comments">0</div><div style="font-size:.66rem;color:var(--muted);margin-top:.2rem">COMMENTS</div></div>
+        <div><div style="font-size:1.6rem;font-weight:800;color:var(--violet);font-family:'Syne',sans-serif" id="ar-polls">0</div><div style="font-size:.66rem;color:var(--muted);margin-top:.2rem">POLLS</div></div>
+        <div><div style="font-size:1.6rem;font-weight:800;color:var(--green);font-family:'Syne',sans-serif" id="ar-score">0</div><div style="font-size:.66rem;color:var(--muted);margin-top:.2rem">ENGAGEMENT</div></div>
+      </div>
+      <div id="ar-summary" style="font-size:.8rem;color:var(--sub);line-height:1.7;margin-bottom:1rem"></div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <a class="btn btn-ghost btn-sm" id="ar-export-comments" target="_blank">📥 Comments CSV</a>
+        <a class="btn btn-ghost btn-sm" id="ar-export-checkins" target="_blank">📥 Check-ins CSV</a>
+        <a class="btn btn-ghost btn-sm" id="ar-export-votes"    target="_blank">📥 Votes CSV</a>
+        <a class="btn btn-ghost btn-sm" id="ar-export-polls"    target="_blank">📥 Polls CSV</a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -310,6 +337,11 @@ tr:hover td{background:var(--input-bg)}
   <div class="card">
     <div class="card-title" data-i18n="card_ai_gen">Generate AI Summary</div>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.6" data-i18n="ai_gen_desc">ระบบจะรวบรวมความคิดเห็นทั้งหมดและส่ง AI วิเคราะห์ แล้ว broadcast ไปยัง Dashboard อัตโนมัติ</p>
+    <div style="margin-bottom:.9rem">
+      <label style="font-size:.75rem;color:var(--sub);display:block;margin-bottom:.4rem" data-i18n="lbl_ai_event">วิเคราะห์ข้อมูลของ Event</label>
+      <select id="ai-event-select" style="min-width:260px"></select>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.35rem" data-i18n="ai_event_hint">ค่าเริ่มต้นคือ Event ปัจจุบัน — เลือก Event เก่าเพื่อให้ AI วิเคราะห์ความคิดเห็นย้อนหลังแทนได้</p>
+    </div>
     <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
       <button class="btn btn-violet" onclick="generateSummary()"><span data-i18n="btn_generate">Generate Summary</span></button>
       <span id="ai-status" style="font-size:.78rem;color:var(--muted)"></span>
@@ -401,7 +433,8 @@ function showPage(name, el) {
   el?.classList.add('active');
   if (name==='comments') fetchComments();
   if (name==='checkins') fetchCheckins();
-  if (name==='event')    loadCurrentEvent();
+  if (name==='event')    { loadCurrentEvent(); populateArchiveEvents(); }
+  if (name==='ai')       populateAiEvents();
 }
 
 // Socket.io removed — updateStat() polls every 8s in init()
@@ -456,6 +489,78 @@ async function startNewEvent() {
 
     // รีโหลดข้อมูลทั้งหมด
     await Promise.all([loadCurrentEvent(), fetchPolls(), updateStat()]);
+  } catch (e) {
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+// ── ดูข้อมูล Event ย้อนหลัง (Archive) ──
+async function populateArchiveEvents() {
+  const sel = document.getElementById('archive-event-select');
+  try {
+    const events = await fetch('/api/event/list').then(r => r.json());
+    const cur    = await fetch('/api/event/current').then(r => r.json());
+    if (!Array.isArray(events) || !events.length) {
+      sel.innerHTML = `<option value="">${NX.lang === 'th' ? '— ไม่มี Event —' : '— No events —'}</option>`;
+      return;
+    }
+    sel.innerHTML = events.map(ev => {
+      const dateStr = ev.created_at
+        ? new Date(ev.created_at).toLocaleString(NX.lang === 'th' ? 'th-TH' : 'en-US', { dateStyle:'medium', timeStyle:'short' })
+        : '';
+      const tag = (cur && ev.id === cur.id) ? (NX.lang === 'th' ? ' (กำลังดำเนินอยู่)' : ' (current)') : '';
+      return `<option value="${ev.id}">${ev.name || ev.id}${tag} — ${dateStr}</option>`;
+    }).join('');
+  } catch {
+    sel.innerHTML = `<option value="">${NX.lang === 'th' ? 'โหลดรายการไม่สำเร็จ' : 'Failed to load events'}</option>`;
+  }
+}
+
+async function loadArchiveEvent() {
+  const sel     = document.getElementById('archive-event-select');
+  const eventId = sel.value;
+  const msgEl   = document.getElementById('archive-msg');
+  const resBox  = document.getElementById('archive-result');
+  if (!eventId) return;
+
+  msgEl.style.color = 'var(--muted)';
+  msgEl.textContent = NX.lang === 'th' ? 'กำลังโหลดข้อมูล...' : 'Loading...';
+  resBox.style.display = 'none';
+
+  try {
+    const qs = `event_id=${encodeURIComponent(eventId)}`;
+    const [eng, comments, polls, summary] = await Promise.all([
+      fetch(`/api/engagement?${qs}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/comment?${qs}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/poll?${qs}`).then(r => r.json()).catch(() => ([])),
+      fetch(`/api/ai/latest?${qs}`).then(r => r.json()).catch(() => ({})),
+    ]);
+
+    document.getElementById('ar-checkins').textContent = eng.checkins ?? 0;
+    document.getElementById('ar-comments').textContent = comments.total ?? 0;
+    document.getElementById('ar-polls').textContent    = Array.isArray(polls) ? polls.length : 0;
+    document.getElementById('ar-score').textContent    = eng.score ?? 0;
+
+    const sumEl = document.getElementById('ar-summary');
+    if (summary && (summary.summaryTh || summary.summaryEn || summary.summary)) {
+      const text = NX.lang === 'th'
+        ? (summary.summaryTh || summary.summary)
+        : (summary.summaryEn || summary.summary);
+      const themes = (NX.lang === 'th' ? summary.keyThemesTh : summary.keyThemesEn) || summary.keyThemes || [];
+      sumEl.innerHTML = `<strong>${NX.lang === 'th' ? 'สรุปโดย AI' : 'AI Summary'}:</strong> ${text || '—'}` +
+        (themes.length ? `<br><strong>${NX.lang === 'th' ? 'ประเด็นสำคัญ' : 'Key themes'}:</strong> ${themes.join(', ')}` : '');
+    } else {
+      sumEl.innerHTML = `<em>${NX.lang === 'th' ? 'ยังไม่มีสรุปโดย AI สำหรับ Event นี้' : 'No AI summary for this event yet'}</em>`;
+    }
+
+    document.getElementById('ar-export-comments').href = `/api/export/csv?type=comments&${qs}`;
+    document.getElementById('ar-export-checkins').href = `/api/export/csv?type=checkins&${qs}`;
+    document.getElementById('ar-export-votes').href    = `/api/export/csv?type=votes&${qs}`;
+    document.getElementById('ar-export-polls').href    = `/api/export/csv?type=polls&${qs}`;
+
+    resBox.style.display = '';
+    msgEl.textContent = '';
   } catch (e) {
     msgEl.style.color = 'var(--red)';
     msgEl.textContent = 'Error: ' + e.message;
@@ -608,13 +713,43 @@ async function fetchCheckins() {
 }
 
 // ── AI Summary ──
+// เติมตัวเลือก Event ให้ AI Summary — ค่าเริ่มต้น (value="") = Event ปัจจุบันเสมอ
+async function populateAiEvents() {
+  const sel = document.getElementById('ai-event-select');
+  if (!sel) return;
+  const curLabel = NX.lang === 'th' ? '— Event ปัจจุบัน (Live) —' : '— Current Event (Live) —';
+  try {
+    const events = await fetch('/api/event/list').then(r => r.json());
+    const cur    = await fetch('/api/event/current').then(r => r.json());
+    let opts = `<option value="">${curLabel}</option>`;
+    if (Array.isArray(events)) {
+      opts += events.filter(ev => !cur || ev.id !== cur.id).map(ev => {
+        const dateStr = ev.created_at
+          ? new Date(ev.created_at).toLocaleString(NX.lang === 'th' ? 'th-TH' : 'en-US', { dateStyle:'medium', timeStyle:'short' })
+          : '';
+        return `<option value="${ev.id}">${ev.name || ev.id} — ${dateStr}</option>`;
+      }).join('');
+    }
+    const prevVal = sel.value;
+    sel.innerHTML = opts;
+    sel.value = prevVal || '';
+  } catch {
+    sel.innerHTML = `<option value="">${curLabel}</option>`;
+  }
+}
+
 async function generateSummary() {
   document.getElementById('ai-status').textContent=NX.t('ai_generating');
   try {
-    const cm = await fetch('/api/comment').then(r=>r.json());
+    const sel        = document.getElementById('ai-event-select');
+    const eventId    = sel ? sel.value : '';            // '' = ใช้ event ปัจจุบัน (default)
+    const qs         = eventId ? `?event_id=${encodeURIComponent(eventId)}` : '';
+    const cm = await fetch('/api/comment'+qs).then(r=>r.json());
     if (!cm.comments?.length) { document.getElementById('ai-status').textContent=NX.t('ai_no_comments'); return; }
+    const body = {comments:cm.comments.map(c=>c.text)};
+    if (eventId) body.eventId = eventId;                // ระบุ event ที่ต้องการให้ AI วิเคราะห์ (ไม่ใส่ = event ปัจจุบัน)
     const r  = await fetch('/api/ai/summary',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({comments:cm.comments.map(c=>c.text)})});
+      body:JSON.stringify(body)});
     const d  = await r.json();
     document.getElementById('ai-status').textContent=NX.t('ai_sent');
     document.getElementById('ai-result-card').style.display='block';

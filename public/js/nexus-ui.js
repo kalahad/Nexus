@@ -99,6 +99,13 @@
       ai_placeholder:   'กด "Generate Summary" ในหน้า Admin เพื่อสร้างสรุปอัตโนมัติ',
       card_stream:      'Live Comment Stream',
       stream_empty:     'ยังไม่มีความคิดเห็น',
+      lbl_viewing_event:'กำลังแสดงข้อมูลของ Event',
+      btn_back_current: 'ปัจจุบัน',
+      th_time:          'เวลา',
+      th_author:        'ผู้แสดงความเห็น',
+      th_comment:       'ความคิดเห็น',
+      th_sentiment:     'Sentiment',
+      th_rating:        '★',
       g_male:'👨', g_female:'👩', g_nb:'🌈', g_ns:'🤫',
 
       /* ── admin — nav ── */
@@ -121,6 +128,7 @@
       btn_export_comments: '📥 Comments CSV',
       btn_export_checkins: '📥 Check-ins CSV',
       btn_export_votes:    '📥 Votes CSV',
+      btn_export_polls:    '📥 Polls CSV',
 
       /* ── admin — polls ── */
       card_create_poll: 'สร้าง Poll ใหม่',
@@ -165,6 +173,8 @@
       /* ── admin — AI summary ── */
       card_ai_gen:     'Generate AI Summary',
       ai_gen_desc:     'ระบบจะรวบรวมความคิดเห็นทั้งหมดและส่ง AI วิเคราะห์ แล้ว broadcast ไปยัง Dashboard อัตโนมัติ',
+      lbl_ai_event:    'วิเคราะห์ข้อมูลของ Event',
+      ai_event_hint:   'ค่าเริ่มต้นคือ Event ปัจจุบัน — เลือก Event เก่าเพื่อให้ AI วิเคราะห์ความคิดเห็นย้อนหลังแทนได้',
       btn_generate:    'Generate Summary',
       ai_result_title: 'ผลลัพธ์',
       ai_no_comments:  'ยังไม่มีความคิดเห็น',
@@ -293,6 +303,13 @@
       ai_placeholder:   'Click "Generate Summary" in Admin to create an AI summary',
       card_stream:      'Live Comment Stream',
       stream_empty:     'No comments yet',
+      lbl_viewing_event:'Viewing data for event',
+      btn_back_current: 'Current',
+      th_time:          'Time',
+      th_author:        'Commenter',
+      th_comment:       'Comment',
+      th_sentiment:     'Sentiment',
+      th_rating:        '★',
       g_male:'👨', g_female:'👩', g_nb:'🌈', g_ns:'🤫',
 
       /* ── admin — nav ── */
@@ -315,6 +332,7 @@
       btn_export_comments: '📥 Comments CSV',
       btn_export_checkins: '📥 Check-ins CSV',
       btn_export_votes:    '📥 Votes CSV',
+      btn_export_polls:    '📥 Polls CSV',
 
       /* ── admin — polls ── */
       card_create_poll: 'Create New Poll',
@@ -359,6 +377,8 @@
       /* ── admin — AI summary ── */
       card_ai_gen:     'Generate AI Summary',
       ai_gen_desc:     'Collects all comments and runs AI analysis, then broadcasts to the Dashboard automatically.',
+      lbl_ai_event:    'Analyze data for Event',
+      ai_event_hint:   'Defaults to the current event — pick an older event to have the AI analyze its past comments instead.',
       btn_generate:    'Generate Summary',
       ai_result_title: 'Result',
       ai_no_comments:  'No comments yet',
